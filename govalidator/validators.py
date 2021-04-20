@@ -2,6 +2,9 @@ from email-validator import validate_email, EmailNotValidError
 import requests
 
 from openpyxl.worksheet.datavalidation import DataValidation
+from openpyxl.utils import quote_sheetname
+from urllib.parse import quote_plus
+from dateutil import parser
 
 from govalidator.exceptions import ValidationException, BadValidatorException
 
@@ -28,6 +31,30 @@ class Validator(object):
     def describe(self, column_name):
         """ Return a line of text describing allowed values"""
         raise NotImplementedError
+
+
+class TextValidator(Validator):
+    """ Default validator : will only check if not empty"""
+
+    def __init__(self, **kwargs):
+        super(SetValidator, self).__init__(**kwargs)
+        self.invalid_set = set()
+
+    def validate(self, field, row={}):
+        if not field and not self.empty_ok:
+            raise ValidationException(
+                "Field cannot be empty"
+            )
+
+    @property
+    def bad(self):
+        return self.invalid_set
+
+    def generate(self, column, ontology_column=None, ontology_worksheet=None):
+        return None
+
+    def describe(self, column_name):
+        return "{} : Free text".format(column_name)
 
 
 class CastValidator(Validator):
@@ -132,6 +159,36 @@ class ListValidator(Validator):
         return "{} : ({})".format(column_name, ", ".join(self.valid_values))
 
 
+class DateValidator(Validator):
+    """ Validates that a field is a Date """
+
+    def __init__(self, day_first=True, **kwargs):
+        super(SetValidator, self).__init__(**kwargs)
+        self.invalid_set = set()
+        self.day_first = day_first
+
+    def validate(self, field, row={}):
+        try:
+            if field or not self.empty_ok:
+                parser.parse(value, dayfirst=self.day_first).date()
+
+        except parser.ParserError as e:
+            self.invalid_set.add(field)
+            raise ValidationException(e)
+
+    @property
+    def bad(self):
+        return self.invalid_set
+
+    def generate(self, column, ontology_column=None, ontology_worksheet=None):
+        dv = DataValidation(type="date")
+        dv.add("{}2:{}1048576").format(column, column)
+        return dv
+
+    def describe(self, column_name):
+        return "{} : Date".format(column_name)
+
+
 class EmailValidator(Validator):
     """ Validates that a field is in the given set """
 
@@ -153,7 +210,7 @@ class EmailValidator(Validator):
 
     def generate(self, column, ontology_column=None):
         params = {"type": "custom"}
-        params["formula1"] = "=ISNUMBER(MATCH("*@*.?*",{}2,0))".format(column)
+        params["formula1"] = '=ISNUMBER(MATCH("*@*.?*",{}2,0))'.format(column)
         dv = DataValidation(**params)
         dv.error ='Value must be an email'
         dv.add("{}2:{}1048576").format(column, column)
@@ -175,14 +232,16 @@ class OntologyValidator(Validator):
 
         is_ontology, self.root_term_iri = _validate_ontology(ontology, self.root_term)
         if not is_ontology:
-            raise BadValidatorException("'{}' is not a valid ontology".format({}))
+            raise BadValidatorException("'{}' is not a valid ontology".format(self.ontology))
+        if self.root_term and not self.root_term_iri:
+            raise BadValidatorException("'{}' is not a valid root term for ontology {}".format(self.root_term, self.ontology))
 
     def validate(self, field, row={}):
         if field == "" and self.empty_ok:
             return
 
         if not (field in validated_terms or field in invalid_set):
-            ontological_term = _validate_ontological_term(field, ontology, self.root_term)
+            ontological_term = _validate_ontological_term(field, ontology, self.root_term_iri)
             if not ontological_term:
                 self.invalid_set.add(field)
                 raise ValidationException(e)
@@ -192,11 +251,18 @@ class OntologyValidator(Validator):
     def bad(self):
         return self.invalid_set
 
-    def generate(self, column, ontology_column=None, ontology_worksheet=None):
-        params = {"type": "custom"}
-        params["formula1"] = "=ISNUMBER(MATCH("*@*.?*",{}2,0))".format(column)
+    def generate(self, column, ontology_column, ontology_worksheet):
+        terms = _get_ontological_terms(ontology, root_term_iri=self.root_term_iri)
+        ontology_worksheet.cell(column=ontology_column, row=0, value=self.ontology)7
+        row = 1
+        for term in terms:
+            ontology_worksheet.cell(column=ontology_column, row=row, value=term)
+            row +=1
+
+        params = {"type": "list"}
+        params["formula1"] = "{}!${}$1:${}${}".format(quote_sheetname("Ontologies", ontology_column, ontology_column, row)
         dv = DataValidation(**params)
-        dv.error ='Value must be an email'
+        dv.error ='Value must be an ontological term'
         dv.add("{}2:{}1048576").format(column, column)
         return dv
 
@@ -248,7 +314,7 @@ class UniqueValidator(Validator):
 
     def generate(self, column, ontology_column=None):
         params = {"type": "custom"}
-        params["formula1"] = "=COUNTIF(${}:${},{}2)<2".format(column, column, column)
+        params["formula1"] = '=COUNTIF(${}:${},{}2)<2'.format(column, column, column)
         dv = DataValidation(**params)
         dv.error ='Value must be unique'
         dv.add("{}2:{}1048576").format(column, column)
@@ -259,16 +325,6 @@ class UniqueValidator(Validator):
         if self.unique_with:
             text += " Must be unique with column(s) {}".format(", ".join(self.unique_with))
         return text
-
-class Ignore(Validator):
-    """ Ignore a given field. Never fails """
-
-    def validate(self, field, row={}):
-        pass
-
-    @property
-    def bad(self):
-        pass
 
 
 def _validate_ontology(ontology, root_term=""):
@@ -289,7 +345,7 @@ def _validate_ontological_term(term, ontology, root_term_iri="", return_uri=Fals
     body = {
         "q": term,
         "ontology": ontology.lower(),
-        "type": "class",
+        "type": "individual",
         "exact": True,
         "queryFields": ["label", "synonym"]
     }
@@ -302,3 +358,24 @@ def _validate_ontological_term(term, ontology, root_term_iri="", return_uri=Fals
     if return_uri:
         return res["response"]["docs"][0]["iri"]
     return True
+
+def _get_ontological_terms(ontology, root_term_iri=""):
+    size = 100
+    terms = set()
+    if root_term_iri:
+        url = "http://www.ebi.ac.uk/ols/api/ontologies/{}/terms/{}/descendants?size={}".format(ontology, quote_plus(quote_plus(root_term_iri)), size)
+    else:
+        url = "http://www.ebi.ac.uk/ols/api/ontologies/{}/terms?size={}".format(ontology, size)
+
+    r = requests.get(url)
+    res = r.json()
+    for term in res["_embedded"]["terms"]:
+        terms.add(term["label"])
+    while "next" in res["_links"]:
+        url = res["_links"]["next"]["href"]
+        r = requests.get(url)
+        res = r.json()
+        for term in res["_embedded"]["terms"]:
+            terms.add(term["label"])
+
+    return terms

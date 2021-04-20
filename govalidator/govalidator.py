@@ -124,7 +124,7 @@ class Govalidator(object):
         self.line_count = len(df)
         # Might be a way to do it more efficiently..
         for row in data.iterrows():
-        df.apply(lambda row : self._validate(row)), axis = 1)
+            df.apply(lambda row : self._validate(row)), axis = 1)
 
         if self.failures:
             self.logger.info("\033[0;31m" + "Failed :(" + "\033[0m")
