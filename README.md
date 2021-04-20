@@ -1,2 +1,2 @@
 # validator
-My file validator
+Extend https://github.com/di/vladiate
