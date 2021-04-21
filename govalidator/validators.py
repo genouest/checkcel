@@ -11,7 +11,7 @@ from govalidator.exceptions import ValidationException, BadValidatorException
 class Validator(object):
     """ Generic Validator class """
 
-    def __init__(self, empty_ok=False, valid_values=set()):
+    def __init__(self, empty_ok=True, valid_values=set()):
         self.fail_count = 0
         self.empty_ok = empty_ok
         self.valid_values  = valid_values
@@ -127,8 +127,8 @@ class IntValidator(CastValidator):
         self.type = "whole"
 
 
-class ListValidator(Validator):
-    """ Validates that a field is in the given list of values """
+class SetValidator(Validator):
+    """ Validates that a field is in the given set of values """
 
     def __init__(self, **kwargs):
         super(SetValidator, self).__init__(**kwargs)

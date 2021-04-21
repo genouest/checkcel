@@ -2,39 +2,32 @@ from __future__ import division
 from collections import defaultdict
 import pandas
 
+from govalidator.gotemplate import Gotemplate
 
-class Govalidator(object):
+
+class Govalidator(Gotemplate):
     def __init__(
         self,
         source,
         type,
-        delimiter=",",
+        separator=",",
         sheet=0,
-        validators={},
+        **kwargs
     ):
-        self.logger = logs.logger
+        super(Govalidator, self).__init__(**kwargs)
         self.failures = defaultdict(lambda: defaultdict(list))
         self.missing_validators = None
         self.missing_fields = None
         self.source = source
         self.type = type
-        self.delimiter = delimiter
+        self.separator = separator
         self.sheet=0
-        self.validators = validators or getattr(self, "validators", {})
         self.line_count = 0
         self.column_set = set()
         self.ignore_missing_validators = False
 
         if not type in ["spreadsheet", "tabular"]:
             raise Exception("Type must be either spreadsheet or tabular")
-
-        self.validators.update(
-            {
-                field: [default_validator()]
-                for field, value in self.validators.items()
-                if not value
-            }
-        )
 
     def _log_debug_failures(self):
         for field_name, field_failure in self.failures.items():
@@ -97,7 +90,7 @@ class Govalidator(object):
         if self.type == "spreadsheet":
             data = pandas.read_excel(self.source, sheet_name=self.sheet, convert_float=False)
         else:
-            data = pandas.read_csv(self.source, sep=self.delimiter)
+            data = pandas.read_csv(self.source, sep=self.separator)
 
         if len(df) == 0:
             self.logger.info(
@@ -127,12 +120,12 @@ class Govalidator(object):
             df.apply(lambda row : self._validate(row)), axis = 1)
 
         if self.failures:
-            self.logger.info("\033[0;31m" + "Failed :(" + "\033[0m")
+            self.logger.info("\033[0;31m" + "Failed" + "\033[0m")
             self._log_debug_failures()
             self._log_validator_failures()
             return False
         else:
-            self.logger.info("\033[0;32m" + "Passed! :)" + "\033[0m")
+            self.logger.info("\033[0;32m" + "Passed" + "\033[0m")
             return True
 
     def _validate(self, row):

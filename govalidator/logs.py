@@ -1,6 +1,6 @@
 import logging
 
-logger = logging.getLogger("vlad_logger")
+logger = logging.getLogger("govalidator_logger")
 logger.setLevel(logging.INFO)
 sh = logging.StreamHandler()
 sh.setLevel(logging.INFO)

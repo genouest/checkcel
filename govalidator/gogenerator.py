@@ -4,26 +4,16 @@ from openpyxl.worksheet.datavalidation import DataValidation
 from govalidator.validators import TextValidator, OntologyValidator
 from openpyxl.utils import get_column_letter
 
-class Gogenerator(object):
+from govalidator.gotemplate import Gotemplate
+
+class Gogenerator(Gotemplate):
     def __init__(
         self,
         output,
-        output_type,
-        validators={},
+        **kwargs
     ):
-        self.logger = logs.logger
+        super(Gogenerator, self).__init__(**kwargs)
         self.output = output
-        self.output_type
-        self.validators = validators or getattr(self, "validators", {})
-
-        self.validators.update(
-            {
-                field: [TextValidator()]
-                for field, value in self.validators.items()
-                if not value
-            }
-        )
-
 
     def generate(self):
         wb = Workbook()

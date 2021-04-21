@@ -1,1 +1,3 @@
-from govalidator.govalidator import GoValidator  # NOQA
+from govalidator.govalidator import GoValidator
+from govalidator.govalidator import Gogenerator
+from govalidator.gotemplate import Gotemplate
