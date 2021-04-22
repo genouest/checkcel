@@ -1,10 +1,10 @@
 from openpyxl import Workbook
-from openpyxl.worksheet.datavalidation import DataValidation
 
-from govalidator.validators import TextValidator, OntologyValidator
+from govalidator.validators import OntologyValidator
 from openpyxl.utils import get_column_letter
 
 from govalidator.gotemplate import Gotemplate
+
 
 class Gogenerator(Gotemplate):
     def __init__(
@@ -32,10 +32,10 @@ class Gogenerator(Gotemplate):
                 if not ontology_sheet:
                     ontology_sheet = ws.create_sheet(title="Ontologies")
                 data_validation = validator.generate(get_column_letter(current_data_column), get_column_letter(current_ontology_column), ontology_sheet)
-                current_ontology_column +=1
+                current_ontology_column += 1
             else:
                 data_validation = validator.generate(get_column_letter(current_data_column))
             if data_validation:
                 data_sheet.add_data_validation(data_validation)
             current_data_column += 1
-        wb.save(filename = self.output)
+        wb.save(filename=self.output)

@@ -2,6 +2,7 @@ from __future__ import division
 from collections import defaultdict
 import pandas
 
+from govalidator.exceptions import ValidationException
 from govalidator.gotemplate import Gotemplate
 
 
@@ -10,7 +11,7 @@ class Govalidator(Gotemplate):
         self,
         source,
         type,
-        separator=",",
+        delimiter=",",
         sheet=0,
         **kwargs
     ):
@@ -20,13 +21,13 @@ class Govalidator(Gotemplate):
         self.missing_fields = None
         self.source = source
         self.type = type
-        self.separator = separator
-        self.sheet=0
+        self.delimiter = delimiter
+        self.sheet = 0
         self.line_count = 0
         self.column_set = set()
         self.ignore_missing_validators = False
 
-        if not type in ["spreadsheet", "tabular"]:
+        if type not in ["spreadsheet", "tabular"]:
             raise Exception("Type must be either spreadsheet or tabular")
 
     def _log_debug_failures(self):
@@ -88,9 +89,9 @@ class Govalidator(Gotemplate):
         )
 
         if self.type == "spreadsheet":
-            data = pandas.read_excel(self.source, sheet_name=self.sheet, convert_float=False)
+            df = pandas.read_excel(self.source, sheet_name=self.sheet, convert_float=False)
         else:
-            data = pandas.read_csv(self.source, sep=self.separator)
+            df = pandas.read_csv(self.source, sep=self.delimiter)
 
         if len(df) == 0:
             self.logger.info(
@@ -114,10 +115,9 @@ class Govalidator(Gotemplate):
             self._log_missing_fields()
             return False
 
-        self.line_count = len(df)
         # Might be a way to do it more efficiently..
-        for row in data.iterrows():
-            df.apply(lambda row : self._validate(row)), axis = 1)
+        for row in df.iterrows():
+            df.apply(lambda row: self._validate(row), axis=1)
 
         if self.failures:
             self.logger.info("\033[0;31m" + "Failed" + "\033[0m")
@@ -131,9 +131,10 @@ class Govalidator(Gotemplate):
     def _validate(self, row):
         for column in self.column_set:
             if column in self.validators:
-                for validator in self.validators[field_name]:
+                for validator in self.validators[column]:
                     try:
                         validator.validate(row[column], row=row)
                     except ValidationException as e:
-                        self.failures[field_name][line].append(e)
+                        self.failures[column][self.line_count].append(e)
                         validator.fail_count += 1
+        self.line_count += 1
