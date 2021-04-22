@@ -2,7 +2,7 @@ from email_validator import validate_email, EmailNotValidError
 import requests
 
 from openpyxl.worksheet.datavalidation import DataValidation
-from openpyxl.utils import quote_sheetname
+from openpyxl.utils import quote_sheetname, column_index_from_string
 from urllib.parse import quote_plus
 from dateutil import parser
 
@@ -50,6 +50,10 @@ class NoValidator(Validator):
     def describe(self, column_name):
         return "{} : Free text".format(column_name)
 
+    @property
+    def bad(self):
+        return self.invalid_set
+
 
 class TextValidator(Validator):
     """ Default validator : will only check if not empty"""
@@ -88,12 +92,12 @@ class CastValidator(Validator):
         try:
             if field or not self.empty_ok:
                 self.cast(field)
-                if min and field <= min:
+                if self.min is not None and field < self.min:
                     self.invalid_set.add(field)
-                    raise ValidationException("{} is below min value {}".format(field, max))
-                if max and field >= max:
+                    raise ValidationException("{} is below min value {}".format(field, self.min))
+                if self.max is not None and field > self.max:
                     self.invalid_set.add(field)
-                    raise ValidationException("{} is above max value {}".format(field, max))
+                    raise ValidationException("{} is above max value {}".format(field, self.max))
 
         except ValueError as e:
             self.invalid_set.add(field)
@@ -105,14 +109,14 @@ class CastValidator(Validator):
 
     def generate(self, column, ontology_column=None, ontology_worksheet=None):
         params = {"type": self.type}
-        if (self.min and self.max):
+        if (self.min is not None and self.max is not None):
             params["formula1"] = self.min
             params["formula2"] = self.max
             params["operator"] = "between"
-        elif self.min:
+        elif self.min is not None:
             params["formula1"] = self.min
             params["operator"] = "greaterThanOrEqual"
-        elif max:
+        elif self.max is not None:
             params["formula1"] = self.max
             params["operator"] = "lessThanOrEqual"
         dv = DataValidation(**params)
@@ -120,11 +124,13 @@ class CastValidator(Validator):
         return dv
 
     def describe(self, column_name):
-        text = "{} : {} number.".format(column_name, self.type)
-        if self.min:
-            text += " Minimum : {}.".format(self.min)
-        if self.max:
-            text += " Maximum : {}.".format(self.max)
+        text = "{} : {} number".format(column_name, self.type.capitalize())
+        if (self.min is not None and self.max is not None):
+            text += " ({} - {})".format(self.min, self.max)
+        elif self.min is not None:
+            text += " >= {}".format(self.min)
+        elif self.max is not None:
+            text += " <= {}".format(self.max)
         return text
 
 
@@ -189,6 +195,8 @@ class DateValidator(Validator):
     def validate(self, field, row={}):
         try:
             if field or not self.empty_ok:
+                # Pandas auto convert fields into dates (ignoring the parse_dates=False)
+                field = str(field)
                 parser.parse(field, dayfirst=self.day_first).date()
 
         except parser.ParserError as e:
@@ -273,10 +281,10 @@ class OntologyValidator(Validator):
 
     def generate(self, column, ontology_column, ontology_worksheet):
         terms = _get_ontological_terms(self.ontology, root_term_iri=self.root_term_iri)
-        ontology_worksheet.cell(column=ontology_column, row=0, value=self.ontology)
-        row = 1
+        ontology_worksheet.cell(column=column_index_from_string(ontology_column), row=1, value=self.ontology)
+        row = 2
         for term in terms:
-            ontology_worksheet.cell(column=ontology_column, row=row, value=term)
+            ontology_worksheet.cell(column=column_index_from_string(ontology_column), row=row, value=term)
             row += 1
 
         params = {"type": "list"}
@@ -341,7 +349,7 @@ class UniqueValidator(Validator):
         return dv
 
     def describe(self, column_name):
-        text = "{} : Unique value.".format(column_name)
+        text = "{} : Unique value".format(column_name)
         if self.unique_with:
             text += " Must be unique with column(s) {}".format(", ".join(self.unique_with))
         return text

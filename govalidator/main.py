@@ -110,7 +110,7 @@ def load_template_file(path):
 
     directory, template = os.path.split(path)
 
-    if not directory in sys.path:
+    if directory not in sys.path:
         sys.path.append(directory)
 
     file = template.split(".")[0]
@@ -152,7 +152,8 @@ def main():
             validators=custom_template_class.validators,
             source=arguments.source,
             type=arguments.type,
-            separator=arguments.separator
+            delimiter=arguments.delimiter,
+            sheet=arguments.sheet
         ).validate()
         all_passed = all_passed and passed
         return exits.OK if all_passed else exits.DATAERR

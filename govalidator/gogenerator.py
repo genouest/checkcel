@@ -20,7 +20,8 @@ class Gogenerator(Gotemplate):
         current_data_column = 1
         current_ontology_column = 1
         current_readme_row = 1
-        readme_sheet = wb.create_sheet(title="README")
+        readme_sheet = wb.active
+        readme_sheet.title = "README"
         data_sheet = wb.create_sheet(title="Data")
         ontology_sheet = None
         for column_name, validator in self.validators.items():

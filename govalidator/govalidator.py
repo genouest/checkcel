@@ -22,7 +22,7 @@ class Govalidator(Gotemplate):
         self.source = source
         self.type = type
         self.delimiter = delimiter
-        self.sheet = 0
+        self.sheet = int(sheet)
         self.line_count = 0
         self.column_set = set()
         self.ignore_missing_validators = False
@@ -39,32 +39,31 @@ class Govalidator(Gotemplate):
                     self.logger.debug("    {}".format(error))
 
     def _log_validator_failures(self):
-        for field_name, validators_list in self.validators.items():
-            for validator in validators_list:
-                if validator.bad:
-                    self.logger.error(
-                        "  {} failed {} time(s) ({:.1%}) on field: '{}'".format(
-                            validator.__class__.__name__,
-                            validator.fail_count,
-                            validator.fail_count / self.line_count,
-                            field_name,
-                        )
+        for field_name, validator in self.validators.items():
+            if validator.bad:
+                self.logger.error(
+                    "  {} failed {} time(s) ({:.1%}) on field: '{}'".format(
+                        validator.__class__.__name__,
+                        validator.fail_count,
+                        validator.fail_count / self.line_count,
+                        field_name,
                     )
-                    try:
-                        # If self.bad is iterable, it contains the fields which
-                        # caused it to fail
-                        invalid = list(validator.bad)
-                        shown = ["'{}'".format(field) for field in invalid[:99]]
-                        hidden = ["'{}'".format(field) for field in invalid[99:]]
+                )
+                try:
+                    # If self.bad is iterable, it contains the fields which
+                    # caused it to fail
+                    invalid = list(validator.bad)
+                    shown = ["'{}'".format(field) for field in invalid[:99]]
+                    hidden = ["'{}'".format(field) for field in invalid[99:]]
+                    self.logger.error(
+                        "    Invalid fields: [{}]".format(", ".join(shown))
+                    )
+                    if hidden:
                         self.logger.error(
-                            "    Invalid fields: [{}]".format(", ".join(shown))
+                            "    ({} more suppressed)".format(len(hidden))
                         )
-                        if hidden:
-                            self.logger.error(
-                                "    ({} more suppressed)".format(len(hidden))
-                            )
-                    except TypeError:
-                        pass
+                except TypeError:
+                    pass
 
     def _log_missing_validators(self):
         self.logger.error("  Missing validators for:")
@@ -89,7 +88,7 @@ class Govalidator(Gotemplate):
         )
 
         if self.type == "spreadsheet":
-            df = pandas.read_excel(self.source, sheet_name=self.sheet, convert_float=False)
+            df = pandas.read_excel(self.source, sheet_name=self.sheet, convert_float=False, keep_default_na=False)
         else:
             df = pandas.read_csv(self.source, sep=self.delimiter)
 
@@ -99,9 +98,9 @@ class Govalidator(Gotemplate):
             )
             return False
 
-        column_set = set(df.columns)
+        self.column_set = set(df.columns)
         validator_set = set(self.validators)
-        self.missing_validators = column_set - validator_set
+        self.missing_validators = self.column_set - validator_set
         if self.missing_validators:
             self.logger.info("\033[1;33m" + "Missing..." + "\033[0m")
             self._log_missing_validators()
@@ -109,15 +108,14 @@ class Govalidator(Gotemplate):
             if not self.ignore_missing_validators:
                 return False
 
-        self.missing_fields = validator_set - column_set
+        self.missing_fields = validator_set - self.column_set
         if self.missing_fields:
             self.logger.info("\033[1;33m" + "Missing..." + "\033[0m")
             self._log_missing_fields()
             return False
 
         # Might be a way to do it more efficiently..
-        for row in df.iterrows():
-            df.apply(lambda row: self._validate(row), axis=1)
+        df.apply(lambda row: self._validate(row), axis=1)
 
         if self.failures:
             self.logger.info("\033[0;31m" + "Failed" + "\033[0m")
@@ -131,10 +129,10 @@ class Govalidator(Gotemplate):
     def _validate(self, row):
         for column in self.column_set:
             if column in self.validators:
-                for validator in self.validators[column]:
-                    try:
-                        validator.validate(row[column], row=row)
-                    except ValidationException as e:
-                        self.failures[column][self.line_count].append(e)
-                        validator.fail_count += 1
+                validator = self.validators[column]
+                try:
+                    validator.validate(row[column], row=row)
+                except ValidationException as e:
+                    self.failures[column][self.line_count].append(e)
+                    validator.fail_count += 1
         self.line_count += 1
