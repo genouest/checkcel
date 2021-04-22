@@ -6,6 +6,7 @@ from govalidator import logs
 from govalidator import exits
 
 import os
+import sys
 import inspect
 from argparse import ArgumentParser
 
@@ -108,6 +109,10 @@ def load_template_file(path):
     """
 
     directory, template = os.path.split(path)
+
+    if not directory in sys.path:
+        sys.path.append(directory)
+
     file = template.split(".")[0]
     mod = __import__(file)
     custom_class = None
@@ -116,6 +121,7 @@ def load_template_file(path):
     # Get the first one
     if filtered_classes:
         custom_class = list(filtered_classes.values())[0]
+
     return custom_class
 
 
