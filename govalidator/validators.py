@@ -38,7 +38,7 @@ class NoValidator(Validator):
     """ No check"""
 
     def __init__(self, **kwargs):
-        super(SetValidator, self).__init__(**kwargs)
+        super(NoValidator, self).__init__(**kwargs)
         self.invalid_set = set()
 
     def validate(self, field, row={}):
@@ -55,7 +55,7 @@ class TextValidator(Validator):
     """ Default validator : will only check if not empty"""
 
     def __init__(self, **kwargs):
-        super(SetValidator, self).__init__(**kwargs)
+        super(TextValidator, self).__init__(**kwargs)
         self.invalid_set = set()
 
     def validate(self, field, row={}):
@@ -105,26 +105,26 @@ class CastValidator(Validator):
 
     def generate(self, column, ontology_column=None, ontology_worksheet=None):
         params = {"type": self.type}
-        if (min and max):
-            params["formula1"] = min
-            params["formula2"] = max
+        if (self.min and self.max):
+            params["formula1"] = self.min
+            params["formula2"] = self.max
             params["operator"] = "between"
-        elif min:
-            params["formula1"] = min
+        elif self.min:
+            params["formula1"] = self.min
             params["operator"] = "greaterThanOrEqual"
         elif max:
-            params["formula1"] = max
+            params["formula1"] = self.max
             params["operator"] = "lessThanOrEqual"
         dv = DataValidation(**params)
-        dv.add("{}2:{}1048576").format(column, column)
+        dv.add("{}2:{}1048576".format(column, column))
         return dv
 
     def describe(self, column_name):
         text = "{} : {} number.".format(column_name, self.type)
-        if min:
-            text += " Minimum : {}.".format(min)
-        if max:
-            text += " Maximum : {}.".format(max)
+        if self.min:
+            text += " Minimum : {}.".format(self.min)
+        if self.max:
+            text += " Maximum : {}.".format(self.max)
         return text
 
 
@@ -169,9 +169,9 @@ class SetValidator(Validator):
     def generate(self, column, ontology_column=None, ontology_worksheet=None):
         params = {"type": "list"}
         values = ",".join(self.valid_values)
-        params["formula1"] = "'" + values + "'"
+        params["formula1"] = '"{}"'.format(values)
         dv = DataValidation(**params)
-        dv.add("{}2:{}1048576").format(column, column)
+        dv.add("{}2:{}1048576".format(column, column))
         return dv
 
     def describe(self, column_name):
@@ -182,7 +182,7 @@ class DateValidator(Validator):
     """ Validates that a field is a Date """
 
     def __init__(self, day_first=True, **kwargs):
-        super(SetValidator, self).__init__(**kwargs)
+        super(DateValidator, self).__init__(**kwargs)
         self.invalid_set = set()
         self.day_first = day_first
 
@@ -201,7 +201,7 @@ class DateValidator(Validator):
 
     def generate(self, column, ontology_column=None, ontology_worksheet=None):
         dv = DataValidation(type="date")
-        dv.add("{}2:{}1048576").format(column, column)
+        dv.add("{}2:{}1048576".format(column, column))
         return dv
 
     def describe(self, column_name):
@@ -212,7 +212,7 @@ class EmailValidator(Validator):
     """ Validates that a field is in the given set """
 
     def __init__(self, **kwargs):
-        super(SetValidator, self).__init__(**kwargs)
+        super(EmailValidator, self).__init__(**kwargs)
         self.invalid_set = set()
 
     def validate(self, field, row={}):
@@ -232,7 +232,7 @@ class EmailValidator(Validator):
         params["formula1"] = '=ISNUMBER(MATCH("*@*.?*",{}2,0))'.format(column)
         dv = DataValidation(**params)
         dv.error = 'Value must be an email'
-        dv.add("{}2:{}1048576").format(column, column)
+        dv.add("{}2:{}1048576".format(column, column))
         return dv
 
     def describe(self, column_name):
@@ -243,7 +243,7 @@ class OntologyValidator(Validator):
     """ Validates that a field is in the given set """
 
     def __init__(self, ontology, root_term="", **kwargs):
-        super(SetValidator, self).__init__(**kwargs)
+        super(OntologyValidator, self).__init__(**kwargs)
         self.invalid_set = set()
         self.validated_terms = set()
         self.ontology = ontology
@@ -283,7 +283,7 @@ class OntologyValidator(Validator):
         params["formula1"] = "{}!${}$1:${}${}".format(quote_sheetname("Ontologies"), ontology_column, ontology_column, row)
         dv = DataValidation(**params)
         dv.error = 'Value must be an ontological term'
-        dv.add("{}2:{}1048576").format(column, column)
+        dv.add("{}2:{}1048576".format(column, column))
         return dv
 
     def describe(self, column_name):
@@ -337,7 +337,7 @@ class UniqueValidator(Validator):
         params["formula1"] = '=COUNTIF(${}:${},{}2)<2'.format(column, column, column)
         dv = DataValidation(**params)
         dv.error = 'Value must be unique'
-        dv.add("{}2:{}1048576").format(column, column)
+        dv.add("{}2:{}1048576".format(column, column))
         return dv
 
     def describe(self, column_name):

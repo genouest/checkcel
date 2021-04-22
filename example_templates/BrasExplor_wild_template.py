@@ -12,10 +12,10 @@ class BrasExplor_wild(Gotemplate):
         ("Country", SetValidator(valid_values=["Algeria", "Egypt", "France", "Italy", "Slovenia", "Tunisia"])),
         ("Region", NoValidator()),
         ("Province", NoValidator()),
-        ("Locality", NoValidator())
+        ("Locality", NoValidator()),
         ("Town", NoValidator()),
         ("GPS", NoValidator()),
-        ("Altitude", FloatValidator(min=0))
+        ("Altitude", FloatValidator(min=0)),
         ("Area", FloatValidator(min=0)),
         ("Plant density", FloatValidator(min=0)),
         ("Pop organization", SetValidator(valid_values=["patchs", "continuous"])),

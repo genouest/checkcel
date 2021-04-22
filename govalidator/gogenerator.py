@@ -17,20 +17,19 @@ class Gogenerator(Gotemplate):
 
     def generate(self):
         wb = Workbook()
-        ws = wb.active
-        current_data_column = 0
-        current_ontology_column = 0
-        current_readme_row = 0
-        readme_sheet = ws.create_sheet(title="README")
-        data_sheet = ws.create_sheet(title="Data")
+        current_data_column = 1
+        current_ontology_column = 1
+        current_readme_row = 1
+        readme_sheet = wb.create_sheet(title="README")
+        data_sheet = wb.create_sheet(title="Data")
         ontology_sheet = None
         for column_name, validator in self.validators.items():
-            readme_sheet.cell(column=0, row=current_readme_row, value=validator.describe(column_name))
+            readme_sheet.cell(column=1, row=current_readme_row, value=validator.describe(column_name))
             current_readme_row += 1
-            data_sheet.cell(column=current_data_column, row=0, value=column_name)
+            data_sheet.cell(column=current_data_column, row=1, value=column_name)
             if isinstance(validator, OntologyValidator):
                 if not ontology_sheet:
-                    ontology_sheet = ws.create_sheet(title="Ontologies")
+                    ontology_sheet = wb.create_sheet(title="Ontologies")
                 data_validation = validator.generate(get_column_letter(current_data_column), get_column_letter(current_ontology_column), ontology_sheet)
                 current_ontology_column += 1
             else:

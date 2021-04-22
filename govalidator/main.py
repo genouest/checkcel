@@ -17,7 +17,7 @@ def parse_args():
     """
 
     # Initialize
-    parser = ArgumentParser(prog='Govalidate')
+    parser = ArgumentParser(description="Test description")
     # Specify the vladfile to be something other than vladfile.py
 
     subparsers = parser.add_subparsers(help='sub-command help', dest="subcommand")
@@ -115,7 +115,7 @@ def load_template_file(path):
     filtered_classes = dict(filter(is_valid_template, vars(mod).items()))
     # Get the first one
     if filtered_classes:
-        custom_class = filtered_classes.values()[0]
+        custom_class = list(filtered_classes.values())[0]
     return custom_class
 
 
@@ -126,7 +126,7 @@ def main():
         logger.error(
             "Unknown command"
         )
-        exits.NOINPUT
+        return exits.NOINPUT
 
     if arguments.subcommand == "extract":
         Goextractor(source=arguments.source, output=arguments.output, sheet=arguments.sheet).extract()
