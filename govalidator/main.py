@@ -38,6 +38,8 @@ def parse_args():
     )
 
     parser_validate.add_argument(
+        "-t",
+        "--type",
         dest="type",
         choices=['spreadsheet', 'tabular'],
         help="Type of file to validate : spreadsheet of tabular",

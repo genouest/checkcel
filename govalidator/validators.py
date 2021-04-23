@@ -21,7 +21,7 @@ class Validator(object):
     def bad(self):
         raise NotImplementedError
 
-    def validate(self, field, row):
+    def validate(self, field, row_number, row):
         """ Validate the given field. Also is given the row context """
         raise NotImplementedError
 
@@ -39,9 +39,9 @@ class NoValidator(Validator):
 
     def __init__(self, **kwargs):
         super(NoValidator, self).__init__(**kwargs)
-        self.invalid_set = set()
+        self.invalid_dict = {"invalid_set": set(), "invalid_rows": set()}
 
-    def validate(self, field, row={}):
+    def validate(self, field, row_number, row={}):
         pass
 
     def generate(self, column, ontology_column=None, ontology_worksheet=None):
@@ -52,7 +52,7 @@ class NoValidator(Validator):
 
     @property
     def bad(self):
-        return self.invalid_set
+        return self.invalid_dict
 
 
 class TextValidator(Validator):
@@ -60,9 +60,9 @@ class TextValidator(Validator):
 
     def __init__(self, **kwargs):
         super(TextValidator, self).__init__(**kwargs)
-        self.invalid_set = set()
+        self.invalid_dict = {"invalid_set": set(), "invalid_rows": set()}
 
-    def validate(self, field, row={}):
+    def validate(self, field, row_number, row={}):
         if not field and not self.empty_ok:
             raise ValidationException(
                 "Field cannot be empty"
@@ -70,7 +70,7 @@ class TextValidator(Validator):
 
     @property
     def bad(self):
-        return self.invalid_set
+        return self.invalid_dict
 
     def generate(self, column, ontology_column=None, ontology_worksheet=None):
         return None
@@ -84,28 +84,31 @@ class CastValidator(Validator):
 
     def __init__(self, min=None, max=None, **kwargs):
         super(CastValidator, self).__init__(**kwargs)
-        self.invalid_set = set()
+        self.invalid_dict = {"invalid_set": set(), "invalid_rows": set()}
         self.min = min
         self.max = max
 
-    def validate(self, field, row={}):
+    def validate(self, field, row_number, row={}):
         try:
             if field or not self.empty_ok:
-                self.cast(field)
+                field = self.cast(field)
                 if self.min is not None and field < self.min:
-                    self.invalid_set.add(field)
+                    self.invalid_dict["invalid_set"].add(field)
+                    self.invalid_dict["invalid_rows"].add(row_number)
                     raise ValidationException("{} is below min value {}".format(field, self.min))
                 if self.max is not None and field > self.max:
-                    self.invalid_set.add(field)
+                    self.invalid_dict["invalid_set"].add(field)
+                    self.invalid_dict["invalid_rows"].add(row_number)
                     raise ValidationException("{} is above max value {}".format(field, self.max))
 
         except ValueError as e:
-            self.invalid_set.add(field)
+            self.invalid_dict["invalid_set"].add(field)
+            self.invalid_dict["invalid_rows"].add(row_number)
             raise ValidationException(e)
 
     @property
     def bad(self):
-        return self.invalid_set
+        return self.invalid_dict
 
     def generate(self, column, ontology_column=None, ontology_worksheet=None):
         params = {"type": self.type}
@@ -157,20 +160,21 @@ class SetValidator(Validator):
 
     def __init__(self, **kwargs):
         super(SetValidator, self).__init__(**kwargs)
-        self.invalid_set = set()
+        self.invalid_dict = {"invalid_set": set(), "invalid_rows": set()}
         if self.empty_ok:
             self.valid_values.add("")
 
-    def validate(self, field, row={}):
+    def validate(self, field, row_number, row={}):
         if field not in self.valid_values:
-            self.invalid_set.add(field)
+            self.invalid_dict["invalid_set"].add(field)
+            self.invalid_dict["invalid_rows"].add(row_number)
             raise ValidationException(
                 "'{}' is invalid".format(field)
             )
 
     @property
     def bad(self):
-        return self.invalid_set
+        return self.invalid_dict
 
     def generate(self, column, ontology_column=None, ontology_worksheet=None):
         params = {"type": "list"}
@@ -189,10 +193,10 @@ class DateValidator(Validator):
 
     def __init__(self, day_first=True, **kwargs):
         super(DateValidator, self).__init__(**kwargs)
-        self.invalid_set = set()
+        self.invalid_dict = {"invalid_set": set(), "invalid_rows": set()}
         self.day_first = day_first
 
-    def validate(self, field, row={}):
+    def validate(self, field, row_number, row={}):
         try:
             if field or not self.empty_ok:
                 # Pandas auto convert fields into dates (ignoring the parse_dates=False)
@@ -200,12 +204,13 @@ class DateValidator(Validator):
                 parser.parse(field, dayfirst=self.day_first).date()
 
         except parser.ParserError as e:
-            self.invalid_set.add(field)
+            self.invalid_dict["invalid_set"].add(field)
+            self.invalid_dict["invalid_rows"].add(row_number)
             raise ValidationException(e)
 
     @property
     def bad(self):
-        return self.invalid_set
+        return self.invalid_dict
 
     def generate(self, column, ontology_column=None, ontology_worksheet=None):
         # GreaterThanOrEqual for validity with ODS.
@@ -222,19 +227,20 @@ class EmailValidator(Validator):
 
     def __init__(self, **kwargs):
         super(EmailValidator, self).__init__(**kwargs)
-        self.invalid_set = set()
+        self.invalid_dict = {"invalid_set": set(), "invalid_rows": set()}
 
-    def validate(self, field, row={}):
+    def validate(self, field, row_number, row={}):
         if field or not self.empty_ok:
             try:
                 validate_email(field)
             except EmailNotValidError as e:
-                self.invalid_set.add(field)
+                self.invalid_dict["invalid_set"].add(field)
+                self.invalid_dict["invalid_rows"].add(row_number)
                 raise ValidationException(e)
 
     @property
     def bad(self):
-        return self.invalid_set
+        return self.invalid_dict
 
     def generate(self, column, ontology_column=None):
         params = {"type": "custom"}
@@ -253,7 +259,7 @@ class OntologyValidator(Validator):
 
     def __init__(self, ontology, root_term="", **kwargs):
         super(OntologyValidator, self).__init__(**kwargs)
-        self.invalid_set = set()
+        self.invalid_dict = {"invalid_set": set(), "invalid_rows": set()}
         self.validated_terms = set()
         self.ontology = ontology
         self.root_term = root_term
@@ -265,20 +271,21 @@ class OntologyValidator(Validator):
         if self.root_term and not self.root_term_iri:
             raise BadValidatorException("'{}' is not a valid root term for ontology {}".format(self.root_term, self.ontology))
 
-    def validate(self, field, row={}):
+    def validate(self, field, row_number, row={}):
         if field == "" and self.empty_ok:
             return
 
         if not (field in self.validated_terms or field in self.invalid_set):
             ontological_term = _validate_ontological_term(field, self.ontology, self.root_term_iri)
             if not ontological_term:
-                self.invalid_set.add(field)
+                self.invalid_dict["invalid_set"].add(field)
+                self.invalid_dict["invalid_rows"].add(row_number)
                 raise ValidationException("{} is not an ontological term".format(field))
             self.validated_terms.add(field)
 
     @property
     def bad(self):
-        return self.invalid_set
+        return self.invalid_dict
 
     def generate(self, column, ontology_column, ontology_worksheet):
         terms = _get_ontological_terms(self.ontology, root_term_iri=self.root_term_iri)
@@ -307,7 +314,7 @@ class UniqueValidator(Validator):
     def __init__(self, unique_with=[], **kwargs):
         super(UniqueValidator, self).__init__(**kwargs)
         self.unique_values = set()
-        self.duplicates = set()
+        self.invalid_dict = {"invalid_set": set(), "invalid_rows": set()}
         self.unique_with = unique_with
         self.unique_check = False
 
@@ -317,7 +324,7 @@ class UniqueValidator(Validator):
             raise BadValidatorException(extra)
         self.unique_check = True
 
-    def validate(self, field, row={}):
+    def validate(self, field, row_number, row={}):
         if field == "" and self.empty_ok:
             return
         if self.unique_with and not self.unique_check:
@@ -327,7 +334,8 @@ class UniqueValidator(Validator):
         if key not in self.unique_values:
             self.unique_values.add(key)
         else:
-            self.duplicates.add(key)
+            self.invalid_dict["invalid_set"].add(field)
+            self.invalid_dict["invalid_rows"].add(row_number)
             if self.unique_with:
                 raise ValidationException(
                     "'{}' is already in the column (unique with: {})".format(
@@ -339,7 +347,7 @@ class UniqueValidator(Validator):
 
     @property
     def bad(self):
-        return self.duplicates
+        return self.invalid_dict
 
     def generate(self, column, ontology_column=None):
         params = {"type": "custom"}

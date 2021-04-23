@@ -10,7 +10,7 @@ class Govalidator(Gotemplate):
     def __init__(
         self,
         source,
-        type,
+        type="spreadsheet",
         delimiter=",",
         sheet=0,
         **kwargs
@@ -40,7 +40,7 @@ class Govalidator(Gotemplate):
 
     def _log_validator_failures(self):
         for field_name, validator in self.validators.items():
-            if validator.bad:
+            if validator.bad["invalid_set"]:
                 self.logger.error(
                     "  {} failed {} time(s) ({:.1%}) on field: '{}'".format(
                         validator.__class__.__name__,
@@ -52,18 +52,14 @@ class Govalidator(Gotemplate):
                 try:
                     # If self.bad is iterable, it contains the fields which
                     # caused it to fail
-                    invalid = list(validator.bad)
-                    shown = ["'{}'".format(field) for field in invalid[:99]]
-                    hidden = ["'{}'".format(field) for field in invalid[99:]]
+                    data = validator.bad
+                    wrong_terms = ", ".join(["'{}'".format(val) for val in data["invalid_set"]])
+                    wrong_rows = ", ".join([str(val) for val in data["invalid_rows"]])
                     self.logger.error(
-                        "    Invalid fields: [{}]".format(", ".join(shown))
+                        "    Invalid fields: [{}] in rows: [{}]".format(wrong_terms, wrong_rows)
                     )
-                    if hidden:
-                        self.logger.error(
-                            "    ({} more suppressed)".format(len(hidden))
-                        )
-                except TypeError:
-                    pass
+                except TypeError as e:
+                    raise e
 
     def _log_missing_validators(self):
         self.logger.error("  Missing validators for:")
@@ -131,7 +127,7 @@ class Govalidator(Gotemplate):
             if column in self.validators:
                 validator = self.validators[column]
                 try:
-                    validator.validate(row[column], row=row)
+                    validator.validate(row[column], self.line_count, row=row)
                 except ValidationException as e:
                     self.failures[column][self.line_count].append(e)
                     validator.fail_count += 1
