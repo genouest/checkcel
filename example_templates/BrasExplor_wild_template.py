@@ -1,5 +1,5 @@
 from govalidator import Gotemplate
-from govalidator.validators import UniqueValidator, SetValidator, DateValidator, NoValidator, IntValidator, FloatValidator, OntologyValidator
+from govalidator.validators import UniqueValidator, SetValidator, DateValidator, NoValidator, IntValidator, FloatValidator
 from collections import OrderedDict
 
 
