@@ -6,6 +6,8 @@ from govalidator import logs
 from govalidator import exits
 
 import os
+import tempfile
+import shutil
 import sys
 import inspect
 from argparse import ArgumentParser
@@ -107,20 +109,20 @@ def load_template_file(path):
     """
     Load template file and get the custom class (subclass of Gotemplate)
     """
+    # Limit conflicts in file name
+    with tempfile.TemporaryDirectory() as dirpath:
+        shutil.copy2(path, dirpath)
+        directory, template = os.path.split(path)
+        sys.path.append(dirpath)
 
-    directory, template = os.path.split(path)
+        file = template.split(".")[0]
+        mod = __import__(file)
+        custom_class = None
 
-    if directory not in sys.path:
-        sys.path.append(directory)
-
-    file = template.split(".")[0]
-    mod = __import__(file)
-    custom_class = None
-
-    filtered_classes = dict(filter(is_valid_template, vars(mod).items()))
-    # Get the first one
-    if filtered_classes:
-        custom_class = list(filtered_classes.values())[0]
+        filtered_classes = dict(filter(is_valid_template, vars(mod).items()))
+        # Get the first one
+        if filtered_classes:
+            custom_class = list(filtered_classes.values())[0]
 
     return custom_class
 

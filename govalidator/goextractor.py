@@ -26,23 +26,23 @@ class Goextractor(object):
         for validation in ws.data_validations.dataValidation:
             if validation.type is None:
                 continue
-            associated_column = self._get_column(validation.sqref.ranges)
-            if not associated_column or associated_column > len(columns_list):
-                continue
-            predicted_type = self._predict_type(validation)
-            validation_dict[columns_list[associated_column - 1]] = predicted_type
+            for cell_range in validation.sqref.ranges:
+                associated_columns = self._get_column(cell_range)
+                for col in associated_columns:
+                    if col > len(columns_list):
+                        continue
+                    predicted_type = self._predict_type(validation)
+                    # Will be overriden if conflicting values...
+                    validation_dict[columns_list[col - 1]] = predicted_type
         data = self._generate_script(columns_list, validation_dict)
         with open(self.output, "w") as f:
             f.write(data)
 
-    def _get_column(self, multi_cell_range):
-        cols = set()
-        for cell_range in multi_cell_range:
-            cols.add(cell_range.min_col)
-            cols.add(cell_range.max_col)
-        if not len(cols) == 1:
-            return False
-        return cols.pop()
+    def _get_column(self, cell_range):
+        if cell_range.min_row == cell_range.max_row:
+            # Might be a mistake, ignore it
+            return []
+        return set([cell_range.min_col, cell_range.max_col])
 
     def _predict_type(self, validation):
         if validation.type == "decimal":
@@ -57,15 +57,14 @@ class Goextractor(object):
             return "NoValidator()"
 
     def _get_numbers_limits(self, validation):
-        if validation.formula1 and validation.formula2:
+        if validation.operator == "between":
             return 'min={}, max={}'.format(validation.formula1, validation.formula2)
-        elif validation.formula1:
-            if validation.operator in ["greaterThan, greaterThanOrEqual"]:
-                return 'min={}'.format(validation.formula1)
-            elif validation.operator in ["lessThan, lessThanOrEqual"]:
-                return 'max={}'.format(validation.formula1)
-            else:
-                return ''
+        elif validation.operator in ["greaterThan", "greaterThanOrEqual"]:
+            return 'min={}'.format(validation.formula1)
+        elif validation.operator in ["lessThan", "lessThanOrEqual"]:
+            return 'max={}'.format(validation.formula1)
+        else:
+            return ''
 
     def _get_set_values(self, validation):
         if "," in validation.formula1:
@@ -81,6 +80,7 @@ class Goextractor(object):
         content = ("from govalidator import Gotemplate\n"
                    "from govalidator.validators import UniqueValidator, SetValidator, DateValidator, NoValidator, IntValidator, FloatValidator\n"
                    "from collections import OrderedDict\n"
+                   "\n"
                    "\n"
                    "class MyTemplate(Gotemplate):\n"
                    "   validators = OrderedDict([\n"
