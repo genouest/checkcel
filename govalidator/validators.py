@@ -208,7 +208,8 @@ class DateValidator(Validator):
         return self.invalid_set
 
     def generate(self, column, ontology_column=None, ontology_worksheet=None):
-        dv = DataValidation(type="date")
+        # GreaterThanOrEqual for validity with ODS.
+        dv = DataValidation(type="date", formula1='12/30/1899', operator='greaterThanOrEqual')
         dv.add("{}2:{}1048576".format(column, column))
         return dv
 

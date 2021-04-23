@@ -8,7 +8,7 @@ class Goextractor(object):
         self.logger = logs.logger
         self.source = source
         self.output = output
-        self.sheet = sheet
+        self.sheet = int(sheet)
         self.columns_list = []
         self.validation_list = []
 
@@ -19,7 +19,8 @@ class Goextractor(object):
         validation_dict = {}
         # Get active columns with name
         for cell in ws[1]:
-            columns_list.append(cell.value)
+            if cell.value:
+                columns_list.append(cell.value)
         if not columns_list:
             raise Exception("TODO")
         for validation in ws.data_validations.dataValidation:
@@ -41,16 +42,16 @@ class Goextractor(object):
             cols.add(cell_range.max_col)
         if not len(cols) == 1:
             return False
-        return cols[0]
+        return cols.pop()
 
     def _predict_type(self, validation):
-        if type == "decimal":
+        if validation.type == "decimal":
             return "FloatValidator({})".format(self._get_numbers_limits(validation))
-        if type == "whole":
+        if validation.type == "whole":
             return "IntValidator({})".format(self._get_numbers_limits(validation))
-        if type == "date":
+        if validation.type == "date":
             return "DateValidator()"
-        if type == "list":
+        if validation.type == "list":
             return "SetValidator({})".format(self._get_set_values(validation))
         else:
             return "NoValidator()"
@@ -69,20 +70,19 @@ class Goextractor(object):
     def _get_set_values(self, validation):
         if "," in validation.formula1:
             value_list = validation.formula1.replace('"', '').split(",")
-            value_string = ''
-            for val in value_list:
-                value_string += '"{}"'.format(val)
+            value_list = ['"{}"'.format(value) for value in value_list]
+            value_string = ', '.join(value_list)
             return 'valid_values=[{}]'.format(value_string)
         # Else it is a cell range : should extract values?
         else:
             return ""
 
     def _generate_script(self, columns_list, validation_dict):
-        content = ("from govalidator import Gotemplate"
-                   "from govalidator.validators import UniqueValidator, SetValidator, DateValidator, NoValidator, IntValidator, FloatValidator"
-                   "from collections import OrderedDict"
-                   ""
-                   "class MyTemplate(Gotemplate):"
+        content = ("from govalidator import Gotemplate\n"
+                   "from govalidator.validators import UniqueValidator, SetValidator, DateValidator, NoValidator, IntValidator, FloatValidator\n"
+                   "from collections import OrderedDict\n"
+                   "\n"
+                   "class MyTemplate(Gotemplate):\n"
                    "   validators = OrderedDict([\n"
                    )
         for column in columns_list:
