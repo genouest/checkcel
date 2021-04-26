@@ -1,9 +1,9 @@
-from govalidator import Gotemplate
-from govalidator.validators import UniqueValidator, SetValidator, DateValidator, NoValidator, IntValidator, FloatValidator
+from checkcel import Checkplate
+from checkcel.validators import UniqueValidator, SetValidator, DateValidator, NoValidator, IntValidator, FloatValidator
 from collections import OrderedDict
 
 
-class BrasExplor_wild(Gotemplate):
+class BrasExplor_wild(Checkplate):
     validators = OrderedDict([
         ("Population name", UniqueValidator()),
         ("Sampling date", DateValidator()),

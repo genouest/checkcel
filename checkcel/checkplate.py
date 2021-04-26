@@ -1,7 +1,7 @@
-from govalidator import logs
+from Checkcel import logs
 
 
-class Gotemplate(object):
+class Checkplate(object):
     """ Base class for templates """
     def __init__(self, validators={}):
         self.logger = logs.logger

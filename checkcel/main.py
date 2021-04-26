@@ -1,9 +1,9 @@
-from govalidator import Govalidator
-from govalidator import Goextractor
-from govalidator import Gogenerator
-from govalidator import Gotemplate
-from govalidator import logs
-from govalidator import exits
+from Checkcel import Checkcel
+from Checkcel import Checkxtractor
+from Checkcel import Checknerator
+from Checkcel import Checkplate
+from Checkcel import logs
+from Checkcel import exits
 
 import os
 import tempfile
@@ -99,17 +99,17 @@ def parse_args():
 
 def is_valid_template(tup):
     """
-    Takes (name, object) tuple, returns True if it's a public Gotemplate subclass.
+    Takes (name, object) tuple, returns True if it's a public Checkplate subclass.
     """
     name, item = tup
     return bool(
-        inspect.isclass(item) and issubclass(item, Gotemplate) and hasattr(item, "validators") and not name.startswith("_")
+        inspect.isclass(item) and issubclass(item, Checkplate) and hasattr(item, "validators") and not name.startswith("_")
     )
 
 
 def load_template_file(path):
     """
-    Load template file and get the custom class (subclass of Gotemplate)
+    Load template file and get the custom class (subclass of Checkplate)
     """
     # Limit conflicts in file name
     with tempfile.TemporaryDirectory() as dirpath:
@@ -139,20 +139,20 @@ def main():
         return exits.NOINPUT
 
     if arguments.subcommand == "extract":
-        Goextractor(source=arguments.source, output=arguments.output, sheet=arguments.sheet).extract()
+        Checkxtractor(source=arguments.source, output=arguments.output, sheet=arguments.sheet).extract()
         return exits.OK
 
     custom_template_class = load_template_file(arguments.template)
     if not custom_template_class:
         logger.error(
-            "Could not find a subclass of Gotemplate in the provided file."
+            "Could not find a subclass of Checkplate in the provided file."
         )
         return exits.UNAVAILABLE
 
     if arguments.subcommand == "validate":
         all_passed = True
 
-        passed = Govalidator(
+        passed = Checkcel(
             validators=custom_template_class.validators,
             source=arguments.source,
             type=arguments.type,
@@ -163,7 +163,7 @@ def main():
         return exits.OK if all_passed else exits.DATAERR
 
     else:
-        Gogenerator(
+        Checknerator(
             validators=custom_template_class.validators,
             output=arguments.output,
         ).generate()

@@ -1,18 +1,18 @@
 from openpyxl import Workbook
 
-from govalidator.validators import OntologyValidator
+from Checkcel.validators import OntologyValidator
 from openpyxl.utils import get_column_letter
 
-from govalidator.gotemplate import Gotemplate
+from Checkcel.checkplate import Checkplate
 
 
-class Gogenerator(Gotemplate):
+class Checknerator(Checkplate):
     def __init__(
         self,
         output,
         **kwargs
     ):
-        super(Gogenerator, self).__init__(**kwargs)
+        super(Checknerator, self).__init__(**kwargs)
         self.output = output
 
     def generate(self):

@@ -6,7 +6,7 @@ from openpyxl.utils import quote_sheetname, column_index_from_string
 from urllib.parse import quote_plus
 from dateutil import parser
 
-from govalidator.exceptions import ValidationException, BadValidatorException
+from Checkcel.exceptions import ValidationException, BadValidatorException
 
 
 class Validator(object):

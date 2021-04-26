@@ -1,8 +1,8 @@
-from govalidator import logs
+from Checkcel import logs
 from openpyxl import load_workbook
 
 
-class Goextractor(object):
+class Checkxtractor(object):
     """ Extract validation value from xlsx file (only) """
     def __init__(self, source, output, sheet=0):
         self.logger = logs.logger
@@ -77,8 +77,8 @@ class Goextractor(object):
             return ""
 
     def _generate_script(self, columns_list, validation_dict):
-        content = ("from govalidator import Gotemplate\n"
-                   "from govalidator.validators import UniqueValidator, SetValidator, DateValidator, NoValidator, IntValidator, FloatValidator\n"
+        content = ("from Checkcel import Gotemplate\n"
+                   "from Checkcel.validators import UniqueValidator, SetValidator, DateValidator, NoValidator, IntValidator, FloatValidator\n"
                    "from collections import OrderedDict\n"
                    "\n"
                    "\n"

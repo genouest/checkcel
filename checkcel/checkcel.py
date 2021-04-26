@@ -2,11 +2,11 @@ from __future__ import division
 from collections import defaultdict
 import pandas
 
-from govalidator.exceptions import ValidationException
-from govalidator.gotemplate import Gotemplate
+from Checkcel.exceptions import ValidationException
+from Checkcel.checkplate import Checkplate
 
 
-class Govalidator(Gotemplate):
+class Checkcel(Checkplate):
     def __init__(
         self,
         source,
@@ -15,7 +15,7 @@ class Govalidator(Gotemplate):
         sheet=0,
         **kwargs
     ):
-        super(Govalidator, self).__init__(**kwargs)
+        super(Checkcel, self).__init__(**kwargs)
         self.failures = defaultdict(lambda: defaultdict(list))
         self.missing_validators = None
         self.missing_fields = None

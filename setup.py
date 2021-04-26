@@ -4,12 +4,12 @@ with open('requirements.txt') as f:
     requires = f.read().splitlines()
 
 setup(
-    name="govalidator",
+    name="checkcel",
     version='0.0.1',
     description="Generate and validate tabulated/spreadsheet files",
     author="Mateo Boudet",
     author_email="mateo.boudet@inrae.fr",
-    url="https://github.com/mboudet/validator",
+    url="https://github.com/mboudet/checkcel",
     install_requires=requires,
     packages=find_packages(),
     long_description_content_type="text/markdown",
@@ -17,7 +17,7 @@ setup(
     platforms="Posix; MacOS X; Windows",
     entry_points='''
         [console_scripts]
-        govalidator=govalidator.main:main
+        checkcel=checkcel.main:main
     ''',
     classifiers=[
         "Intended Audience :: Developers",
