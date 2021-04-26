@@ -3,7 +3,7 @@ from checkcel.validators import SetValidator, NoValidator
 from collections import OrderedDict
 
 
-class BrasExplor_Pictures(Checkplate):
+class MyTemplate(Checkplate):
     validators = OrderedDict([
         ("name@Population", NoValidator()),
         ("Picture", NoValidator()),

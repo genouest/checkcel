@@ -97,5 +97,5 @@ class Checkxtractor(object):
             validator = validation_dict.get(column, "NoValidator()")
             content += '        ("{}", {}),\n'.format(column, validator)
         content = content.rstrip(",\n") + "\n"
-        content += "    ])"
+        content += "    ])\n"
         return content
