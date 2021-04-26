@@ -4,8 +4,8 @@ Checkcel is a generation & validation tool for CSV/ODS/XLSX/XLS files.
 Basic validations (sets, whole, decimals, unicity, emails, dates) are included, but also ontologies validation.
 (Using the [OLS API](https://www.ebi.ac.uk/ols/index))
 
-Checkcel (tmp) works with python templates to for the generation and validation
-Examples are available in the *example_templates* folder.
+Checkcel (tmp) works with python templates to for the generation and validation.  
+Examples are available in the *example_templates* folder.  
 
 Three commands are available:
 
