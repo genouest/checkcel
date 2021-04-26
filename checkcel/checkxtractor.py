@@ -1,4 +1,4 @@
-from Checkcel import logs
+from checkcel import logs
 from openpyxl import load_workbook
 
 
@@ -11,6 +11,7 @@ class Checkxtractor(object):
         self.sheet = int(sheet)
         self.columns_list = []
         self.validation_list = []
+        self.used_validators = set()
 
     def extract(self):
         wb = load_workbook(self.source)
@@ -46,18 +47,23 @@ class Checkxtractor(object):
 
     def _predict_type(self, validation):
         if validation.type == "decimal":
+            self.used_validators.add("FloatValidator")
             return "FloatValidator({})".format(self._get_numbers_limits(validation))
         if validation.type == "whole":
+            self.used_validators.add("IntValidator")
             return "IntValidator({})".format(self._get_numbers_limits(validation))
         if validation.type == "date":
+            self.used_validators.add("DateValidator")
             return "DateValidator()"
         if validation.type == "list":
+            self.used_validators.add("SetValidator")
             return "SetValidator({})".format(self._get_set_values(validation))
         else:
             return "NoValidator()"
 
     def _get_numbers_limits(self, validation):
-        if validation.operator == "between":
+        # Compatibility for "between"
+        if validation.operator == "between" or (validation.operator is None and validation.formula1 is not None and validation.formula2 is not None):
             return 'min={}, max={}'.format(validation.formula1, validation.formula2)
         elif validation.operator in ["greaterThan", "greaterThanOrEqual"]:
             return 'min={}'.format(validation.formula1)
@@ -77,14 +83,16 @@ class Checkxtractor(object):
             return ""
 
     def _generate_script(self, columns_list, validation_dict):
-        content = ("from Checkcel import Gotemplate\n"
-                   "from Checkcel.validators import UniqueValidator, SetValidator, DateValidator, NoValidator, IntValidator, FloatValidator\n"
+        self.used_validators.add("NoValidator")
+        validators_list = list(self.used_validators)
+        content = ("from checkcel import Checkplate\n"
+                   "from checkcel.validators import {}\n"
                    "from collections import OrderedDict\n"
                    "\n"
                    "\n"
-                   "class MyTemplate(Gotemplate):\n"
-                   "   validators = OrderedDict([\n"
-                   )
+                   "class MyTemplate(Checkplate):\n"
+                   "    validators = OrderedDict([\n"
+                   ).format(", ".join(validators_list))
         for column in columns_list:
             validator = validation_dict.get(column, "NoValidator()")
             content += '        ("{}", {}),\n'.format(column, validator)

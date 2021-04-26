@@ -3,7 +3,7 @@ from checkcel.validators import UniqueValidator, SetValidator, DateValidator, No
 from collections import OrderedDict
 
 
-class BrasExplor_wild(Checkplate):
+class BrasExplor_Population_wild(Checkplate):
     validators = OrderedDict([
         ("Population name", UniqueValidator()),
         ("Sampling date", DateValidator()),

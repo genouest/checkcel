@@ -2,8 +2,8 @@ from __future__ import division
 from collections import defaultdict
 import pandas
 
-from Checkcel.exceptions import ValidationException
-from Checkcel.checkplate import Checkplate
+from checkcel.exceptions import ValidationException
+from checkcel.checkplate import Checkplate
 
 
 class Checkcel(Checkplate):

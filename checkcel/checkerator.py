@@ -1,18 +1,18 @@
 from openpyxl import Workbook
 
-from Checkcel.validators import OntologyValidator
+from checkcel.validators import OntologyValidator
 from openpyxl.utils import get_column_letter
 
-from Checkcel.checkplate import Checkplate
+from checkcel.checkplate import Checkplate
 
 
-class Checknerator(Checkplate):
+class Checkerator(Checkplate):
     def __init__(
         self,
         output,
         **kwargs
     ):
-        super(Checknerator, self).__init__(**kwargs)
+        super(Checkerator, self).__init__(**kwargs)
         self.output = output
 
     def generate(self):

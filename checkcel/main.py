@@ -1,15 +1,9 @@
-from Checkcel import Checkcel
-from Checkcel import Checkxtractor
-from Checkcel import Checknerator
-from Checkcel import Checkplate
-from Checkcel import logs
-from Checkcel import exits
+from checkcel import Checkcel
+from checkcel import Checkxtractor
+from checkcel import Checkerator
+from checkcel import logs
+from checkcel import exits
 
-import os
-import tempfile
-import shutil
-import sys
-import inspect
 from argparse import ArgumentParser
 
 
@@ -97,38 +91,6 @@ def parse_args():
     return parser.parse_args()
 
 
-def is_valid_template(tup):
-    """
-    Takes (name, object) tuple, returns True if it's a public Checkplate subclass.
-    """
-    name, item = tup
-    return bool(
-        inspect.isclass(item) and issubclass(item, Checkplate) and hasattr(item, "validators") and not name.startswith("_")
-    )
-
-
-def load_template_file(path):
-    """
-    Load template file and get the custom class (subclass of Checkplate)
-    """
-    # Limit conflicts in file name
-    with tempfile.TemporaryDirectory() as dirpath:
-        shutil.copy2(path, dirpath)
-        directory, template = os.path.split(path)
-        sys.path.append(dirpath)
-
-        file = template.split(".")[0]
-        mod = __import__(file)
-        custom_class = None
-
-        filtered_classes = dict(filter(is_valid_template, vars(mod).items()))
-        # Get the first one
-        if filtered_classes:
-            custom_class = list(filtered_classes.values())[0]
-
-    return custom_class
-
-
 def main():
     arguments = parse_args()
     logger = logs.logger
@@ -142,31 +104,22 @@ def main():
         Checkxtractor(source=arguments.source, output=arguments.output, sheet=arguments.sheet).extract()
         return exits.OK
 
-    custom_template_class = load_template_file(arguments.template)
-    if not custom_template_class:
-        logger.error(
-            "Could not find a subclass of Checkplate in the provided file."
-        )
-        return exits.UNAVAILABLE
-
     if arguments.subcommand == "validate":
         all_passed = True
 
         passed = Checkcel(
-            validators=custom_template_class.validators,
             source=arguments.source,
             type=arguments.type,
             delimiter=arguments.delimiter,
             sheet=arguments.sheet
-        ).validate()
+        ).load_from_file(arguments.template).validate()
         all_passed = all_passed and passed
         return exits.OK if all_passed else exits.DATAERR
 
     else:
-        Checknerator(
-            validators=custom_template_class.validators,
+        Checkerator(
             output=arguments.output,
-        ).generate()
+        ).load_from_file(arguments.template).generate()
         return exits.OK
 
 
