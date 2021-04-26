@@ -9,9 +9,14 @@ Examples are available in the *example_templates* folder.
 
 Three commands are available:
 
+# Command line
+
 ## Checkcel extract
 
 The `extract` command will try to extract a Python template (with validation setup) from an existing **.xlsx** file. (For now, due to the lack of python libraries for interacting with .ods files, they are not supported.)
+
+Optional parameter :
+* --sheet for the sheet to validate (First sheet is number 0. Default to 0)
 
 Syntax:
 `Checkcel extract myinputfile.xlsx myoutfile.py --sheet mysheetnumber`
@@ -31,11 +36,39 @@ Syntax:
 Based on https://github.com/di/vladiate for the syntax. Relies on `pandas` for reading csv/ods/xls/xlsx files.
 The `validate` command will check the validity of a file against a template.
 
+Optional parameters :
+* --sheet for the sheet to validate (First sheet is number 0. Default to 0)
+* --type "spreadsheet" or "tabular" (default to spreadsheet)
+* --delimiter Tabular file delimiter (default to ",")
+
 Syntax:
 ```bash
 Checkcel validate BrasExplor_wild_template.py Population_description_BR_F_W.ods --sheet 2
 Validating Checkcel(source=Population_description_BR_F_W.ods)                                                        Failed                                                                                                                    SetValidator failed 1 time(s) (20.0%) on field: 'Pop organization (3)'                                                    Invalid fields: [''] in rows: [4]                                                                                     SetValidator failed 1 time(s) (20.0%) on field: 'Exposure (14)'                                                           Invalid fields: [''] in rows: [0]                                                                                     IntValidator failed 1 time(s) (20.0%) on field: 'Source rock surface (24)'                                                Invalid fields: [''] in rows: [3]                                                                                     IntValidator failed 5 time(s) (100.0%) on field: 'Pierraille surface (25)'
 ```
+
+# Python library
+
+```python
+from checkcel import Checkcel, Checkxtractor, Checkerator
+
+Checkxtractor(source=your_xlsx_file, output=your_output_file, sheet=input_sheet_number).extract()
+
+Checkcel(
+        source=your_xlsx_file,
+        type="spreadsheet | tabular",
+        delimiter=",",
+        sheet="0"
+).load_from_file(your_template_file).validate()
+
+Checkerator(
+        output=your_output_file,
+).load_from_file(your_template_file).generate()
+
+```
+
+
+
 
 # Templates
 A template needs to contain a class inheriting the Checkplate class.
