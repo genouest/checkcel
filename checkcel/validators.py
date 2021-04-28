@@ -25,7 +25,7 @@ class Validator(object):
         """ Validate the given field. Also is given the row context """
         raise NotImplementedError
 
-    def generate(self, column, ontology_column=None, ontology_worksheet=None):
+    def generate(self, column):
         """ Generate an openpyxl Datavalidation entity. Pass the column for custom formulas"""
         raise NotImplementedError
 
@@ -44,7 +44,7 @@ class NoValidator(Validator):
     def validate(self, field, row_number, row={}):
         pass
 
-    def generate(self, column, ontology_column=None, ontology_worksheet=None):
+    def generate(self, column):
         return None
 
     def describe(self, column_name):
@@ -72,7 +72,7 @@ class TextValidator(Validator):
     def bad(self):
         return self.invalid_dict
 
-    def generate(self, column, ontology_column=None, ontology_worksheet=None):
+    def generate(self, column):
         return None
 
     def describe(self, column_name):
@@ -110,7 +110,7 @@ class CastValidator(Validator):
     def bad(self):
         return self.invalid_dict
 
-    def generate(self, column, ontology_column=None, ontology_worksheet=None):
+    def generate(self, column):
         params = {"type": self.type}
         if (self.min is not None and self.max is not None):
             params["formula1"] = self.min
@@ -176,10 +176,20 @@ class SetValidator(Validator):
     def bad(self):
         return self.invalid_dict
 
-    def generate(self, column, ontology_column=None, ontology_worksheet=None):
-        params = {"type": "list"}
-        values = ",".join(self.valid_values)
-        params["formula1"] = '"{}"'.format(values)
+    def generate(self, column, column_name="", additional_column=None, additional_worksheet=None):
+        # If total length > 256 : need to use cells on another sheet
+        if additional_column and additional_worksheet:
+            params = {"type": "list"}
+            additional_worksheet.cell(column=column_index_from_string(additional_column), row=1, value=column_name)
+            row = 2
+            for term in self.valid_values:
+                additional_worksheet.cell(column=column_index_from_string(additional_column), row=row, value=term)
+                row += 1
+            params["formula1"] = "{}!${}$2:${}${}".format(quote_sheetname(additional_worksheet.title), additional_column, additional_column, row - 1)
+        else:
+            params = {"type": "list"}
+            values = ",".join(self.valid_values)
+            params["formula1"] = '"{}"'.format(values)
         dv = DataValidation(**params)
         dv.add("{}2:{}1048576".format(column, column))
         return dv
@@ -212,7 +222,7 @@ class DateValidator(Validator):
     def bad(self):
         return self.invalid_dict
 
-    def generate(self, column, ontology_column=None, ontology_worksheet=None):
+    def generate(self, column, additional_column=None, additional_worksheet=None):
         # GreaterThanOrEqual for validity with ODS.
         dv = DataValidation(type="date", formula1='12/30/1899', operator='greaterThanOrEqual')
         dv.add("{}2:{}1048576".format(column, column))
@@ -287,16 +297,16 @@ class OntologyValidator(Validator):
     def bad(self):
         return self.invalid_dict
 
-    def generate(self, column, ontology_column, ontology_worksheet):
+    def generate(self, column, additional_column, additional_worksheet):
         terms = _get_ontological_terms(self.ontology, root_term_iri=self.root_term_iri)
-        ontology_worksheet.cell(column=column_index_from_string(ontology_column), row=1, value=self.ontology)
+        additional_worksheet.cell(column=column_index_from_string(additional_column), row=1, value=self.ontology)
         row = 2
         for term in terms:
-            ontology_worksheet.cell(column=column_index_from_string(ontology_column), row=row, value=term)
+            additional_worksheet.cell(column=column_index_from_string(additional_column), row=row, value=term)
             row += 1
 
         params = {"type": "list"}
-        params["formula1"] = "{}!${}$1:${}${}".format(quote_sheetname("Ontologies"), ontology_column, ontology_column, row)
+        params["formula1"] = "{}!${}$2:${}${}".format(quote_sheetname(additional_worksheet.title), additional_column, additional_column, row - 1)
         dv = DataValidation(**params)
         dv.error = 'Value must be an ontological term'
         dv.add("{}2:{}1048576".format(column, column))

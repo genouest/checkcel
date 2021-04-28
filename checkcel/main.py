@@ -88,6 +88,14 @@ def parse_args():
         help="Sheet to extract",
     )
 
+    parser_extract.add_argument(
+        "-r",
+        "--row",
+        dest="row",
+        default=0,
+        help="Row to extract (default 0)",
+    )
+
     return parser.parse_args()
 
 
@@ -101,7 +109,7 @@ def main():
         return exits.NOINPUT
 
     if arguments.subcommand == "extract":
-        Checkxtractor(source=arguments.source, output=arguments.output, sheet=arguments.sheet).extract()
+        Checkxtractor(source=arguments.source, output=arguments.output, sheet=arguments.sheet, row=arguments.row).extract()
         return exits.OK
 
     if arguments.subcommand == "validate":

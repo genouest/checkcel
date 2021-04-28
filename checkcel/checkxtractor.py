@@ -4,22 +4,27 @@ from openpyxl import load_workbook
 
 class Checkxtractor(object):
     """ Extract validation value from xlsx file (only) """
-    def __init__(self, source, output, sheet=0):
+    def __init__(self, source, output, sheet=0, row=0):
         self.logger = logs.logger
         self.source = source
         self.output = output
         self.sheet = int(sheet)
+        self.row = int(row)
         self.columns_list = []
         self.validation_list = []
+        self.names = {}
+        self.wb = None
         self.used_validators = set()
 
     def extract(self):
-        wb = load_workbook(self.source)
-        ws = wb.worksheets[self.sheet]
+        self.wb = load_workbook(self.source)
+        for name in self.wb.defined_names.definedName:
+            self.names[name.name] = name.destinations
+        ws = self.wb.worksheets[self.sheet]
         columns_list = []
         validation_dict = {}
         # Get active columns with name
-        for cell in ws[1]:
+        for cell in ws[self.row + 1]:
             if cell.value:
                 columns_list.append(cell.value)
         if not columns_list:
@@ -79,6 +84,17 @@ class Checkxtractor(object):
             value_string = ', '.join(value_list)
             return 'valid_values=[{}]'.format(value_string)
         # Else it is a cell range : should extract values?
+        elif validation.formula1.lstrip("=") in self.names:
+            cell_range = self.names[validation.formula1.lstrip("=")]
+            value_list = []
+            for sheet, coords in cell_range:
+                ws = self.wb[sheet]
+                for cell_tuple in ws[coords]:
+                    for cell in cell_tuple:
+                        value_list.append(cell.value)
+            value_list = ['"{}"'.format(value) for value in value_list]
+            value_string = ', '.join(value_list)
+            return 'valid_values=[{}]'.format(value_string)
         else:
             return ""
 
