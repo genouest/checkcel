@@ -57,6 +57,14 @@ def parse_args():
         default=","
     )
 
+    parser_validate.add_argument(
+        "-r",
+        "--row",
+        dest="row",
+        default=0,
+        help="Ignore the first n rows (default 0)",
+    )
+
     parser_generate = subparsers.add_parser('generate', help='Generate an xlsx file')
 
     parser_generate.add_argument(
@@ -94,7 +102,7 @@ def parse_args():
         "--row",
         dest="row",
         default=0,
-        help="Row to extract (default 0)",
+        help="Ignore the first n rows (default 0)",
     )
 
     return parser.parse_args()
@@ -120,7 +128,8 @@ def main():
             source=arguments.source,
             type=arguments.type,
             delimiter=arguments.delimiter,
-            sheet=arguments.sheet
+            sheet=arguments.sheet,
+            row=arguments.row
         ).load_from_file(arguments.template)
         if not isinstance(passed, Checkplate):
             return passed

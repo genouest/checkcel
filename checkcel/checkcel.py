@@ -13,6 +13,7 @@ class Checkcel(Checkplate):
         type="spreadsheet",
         delimiter=",",
         sheet=0,
+        row=0,
         **kwargs
     ):
         super(Checkcel, self).__init__(**kwargs)
@@ -23,6 +24,7 @@ class Checkcel(Checkplate):
         self.type = type
         self.delimiter = delimiter
         self.sheet = int(sheet)
+        self.row = row
         self.line_count = 0
         self.column_set = set()
         self.ignore_missing_validators = False
@@ -84,9 +86,9 @@ class Checkcel(Checkplate):
         )
 
         if self.type == "spreadsheet":
-            df = pandas.read_excel(self.source, sheet_name=self.sheet, convert_float=False, keep_default_na=False)
+            df = pandas.read_excel(self.source, sheet_name=self.sheet, convert_float=False, keep_default_na=False, skiprows=self.row)
         else:
-            df = pandas.read_csv(self.source, sep=self.delimiter)
+            df = pandas.read_csv(self.source, sep=self.delimiter, skiprows=self.row)
 
         if len(df) == 0:
             self.logger.info(
