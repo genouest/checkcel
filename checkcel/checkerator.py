@@ -1,6 +1,6 @@
 from openpyxl import Workbook
 
-from checkcel.validators import OntologyValidator, SetValidator
+from checkcel.validators import OntologyValidator, SetValidator, LinkedSetValidator
 from openpyxl.utils import get_column_letter
 
 from checkcel.checkplate import Checkplate
@@ -26,6 +26,7 @@ class Checkerator(Checkplate):
         data_sheet = wb.create_sheet(title="Data")
         ontology_sheet = None
         set_sheet = None
+        set_columns = {}
         for column_name, validator in self.validators.items():
             readme_sheet.cell(column=1, row=current_readme_row, value=validator.describe(column_name))
             current_readme_row += 1
@@ -44,9 +45,23 @@ class Checkerator(Checkplate):
                     current_set_column += 1
                 else:
                     data_validation = validator.generate(get_column_letter(current_data_column))
+                set_columns[column_name] = get_column_letter(current_data_column)
+            elif isinstance(validator, LinkedSetValidator):
+                if not set_sheet:
+                    set_sheet = wb.create_sheet(title="Sets")
+                data_validation = validator.generate(get_column_letter(current_data_column), set_columns, column_name, get_column_letter(current_set_column), set_sheet, wb)
+                current_set_column += 1
+                set_columns[column_name] = get_column_letter(current_data_column)
             else:
                 data_validation = validator.generate(get_column_letter(current_data_column))
             if data_validation:
                 data_sheet.add_data_validation(data_validation)
             current_data_column += 1
+        for sheet in wb.worksheets:
+            for column_cells in sheet.columns:
+                length = (max(len(self.as_text(cell.value)) for cell in column_cells) + 2) * 1.2
+                sheet.column_dimensions[get_column_letter(column_cells[0].column)].width = length
         wb.save(filename=self.output)
+
+    def as_text(self, value):
+        return str(value) if value is not None else ""

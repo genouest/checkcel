@@ -19,7 +19,7 @@ class Checkplate(object):
         with tempfile.TemporaryDirectory() as dirpath:
             shutil.copy2(file_path, dirpath)
             directory, template = os.path.split(file_path)
-            sys.path.append(dirpath)
+            sys.path.insert(0, dirpath)
 
             file = template.split(".")[0]
             mod = __import__(file)

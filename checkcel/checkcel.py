@@ -40,7 +40,7 @@ class Checkcel(Checkplate):
 
     def _log_validator_failures(self):
         for field_name, validator in self.validators.items():
-            if validator.bad["invalid_set"]:
+            if validator.bad:
                 self.logger.error(
                     "  {} failed {} time(s) ({:.1%}) on field: '{}'".format(
                         validator.__class__.__name__,

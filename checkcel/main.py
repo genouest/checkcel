@@ -1,3 +1,4 @@
+from checkcel import Checkplate
 from checkcel import Checkcel
 from checkcel import Checkxtractor
 from checkcel import Checkerator
@@ -120,14 +121,20 @@ def main():
             type=arguments.type,
             delimiter=arguments.delimiter,
             sheet=arguments.sheet
-        ).load_from_file(arguments.template).validate()
+        ).load_from_file(arguments.template)
+        if not isinstance(passed, Checkplate):
+            return passed
+        passed.validate()
         all_passed = all_passed and passed
         return exits.OK if all_passed else exits.DATAERR
 
     else:
-        Checkerator(
+        passed = Checkerator(
             output=arguments.output,
-        ).load_from_file(arguments.template).generate()
+        ).load_from_file(arguments.template)
+        if not isinstance(passed, Checkplate):
+            return passed
+        passed.generate()
         return exits.OK
 
 

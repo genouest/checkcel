@@ -3,8 +3,12 @@ import requests
 
 from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.utils import quote_sheetname, column_index_from_string
+from openpyxl.styles import Font
+from openpyxl.workbook.defined_name import DefinedName
 from urllib.parse import quote_plus
 from dateutil import parser
+
+from collections import defaultdict
 
 from checkcel.exceptions import ValidationException, BadValidatorException
 
@@ -12,10 +16,10 @@ from checkcel.exceptions import ValidationException, BadValidatorException
 class Validator(object):
     """ Generic Validator class """
 
-    def __init__(self, empty_ok=False, valid_values=set()):
+    def __init__(self, empty_ok=False):
+        self.invalid_dict = defaultdict(set)
         self.fail_count = 0
         self.empty_ok = empty_ok
-        self.valid_values = valid_values
 
     @property
     def bad(self):
@@ -39,7 +43,6 @@ class NoValidator(Validator):
 
     def __init__(self, **kwargs):
         super(NoValidator, self).__init__(**kwargs)
-        self.invalid_dict = {"invalid_set": set(), "invalid_rows": set()}
 
     def validate(self, field, row_number, row={}):
         pass
@@ -60,7 +63,6 @@ class TextValidator(Validator):
 
     def __init__(self, **kwargs):
         super(TextValidator, self).__init__(**kwargs)
-        self.invalid_dict = {"invalid_set": set(), "invalid_rows": set()}
 
     def validate(self, field, row_number, row={}):
         if not field and not self.empty_ok:
@@ -84,7 +86,6 @@ class CastValidator(Validator):
 
     def __init__(self, min=None, max=None, **kwargs):
         super(CastValidator, self).__init__(**kwargs)
-        self.invalid_dict = {"invalid_set": set(), "invalid_rows": set()}
         self.min = min
         self.max = max
 
@@ -158,9 +159,9 @@ class IntValidator(CastValidator):
 class SetValidator(Validator):
     """ Validates that a field is in the given set of values """
 
-    def __init__(self, **kwargs):
+    def __init__(self, valid_values=set(), **kwargs):
         super(SetValidator, self).__init__(**kwargs)
-        self.invalid_dict = {"invalid_set": set(), "invalid_rows": set()}
+        self.valid_values = valid_values
         if self.empty_ok:
             self.valid_values.add("")
 
@@ -180,7 +181,8 @@ class SetValidator(Validator):
         # If total length > 256 : need to use cells on another sheet
         if additional_column and additional_worksheet:
             params = {"type": "list"}
-            additional_worksheet.cell(column=column_index_from_string(additional_column), row=1, value=column_name)
+            cell = additional_worksheet.cell(column=column_index_from_string(additional_column), row=1, value=column_name)
+            cell.font = Font(color="FF0000", bold=True)
             row = 2
             for term in self.valid_values:
                 additional_worksheet.cell(column=column_index_from_string(additional_column), row=row, value=term)
@@ -198,12 +200,76 @@ class SetValidator(Validator):
         return "{} : ({})".format(column_name, ", ".join(self.valid_values))
 
 
+class LinkedSetValidator(Validator):
+    """ Validates that a field is in the given set of values """
+
+    def __init__(self, linked_column, valid_values, **kwargs):
+        super(LinkedSetValidator, self).__init__(**kwargs)
+        self.valid_values = valid_values
+        self.linked_column = linked_column
+        self.column_check = False
+
+    def _precheck_unique_with(self, row):
+        if self.linked_column not in row.keys():
+            raise BadValidatorException("Linked column {} is not in file columns".format(self.linked_column))
+        self.column_check = True
+
+    def validate(self, field, row_number, row):
+        if not self.column_check:
+            self._precheck_unique_with(row)
+        if field == "" and self.empty_ok:
+            return
+        related_column_value = row[self.linked_column]
+        if not related_column_value:
+            self.invalid_dict["invalid_rows"].add(row_number)
+            self.invalid_dict["invalid_set"].add("Invalid linked column value: ''")
+            raise ValidationException("Linked column {} is empty".format(self.linked_column))
+        if related_column_value not in self.valid_values.keys():
+            self.invalid_dict["invalid_set"].add("Invalid linked column value: {}".format(related_column_value))
+            self.invalid_dict["invalid_rows"].add(row_number)
+            raise ValidationException("Linked column {} value {} is not in valid values".format(self.linked_column, related_column_value))
+        if field not in self.valid_values[related_column_value]:
+            self.invalid_dict["invalid_set"].add(field)
+            self.invalid_dict["invalid_rows"].add(row_number)
+            raise ValidationException("Value {} is not in allowed values".format(field))
+
+    @property
+    def bad(self):
+        return self.invalid_dict
+
+    def generate(self, column, set_columns, column_name, additional_column, additional_worksheet, workbook):
+        if self.linked_column not in set_columns:
+            # TODO raise warning
+            return None
+        params = {"type": "list"}
+        additional_worksheet.cell(column=column_index_from_string(additional_column), row=1, value=column_name).font = Font(color="FF0000", bold=True)
+        row = 2
+        row_dict = {}
+        for key, value in self.valid_values.items():
+            additional_worksheet.cell(column=column_index_from_string(additional_column), row=row, value=key).font = Font(color="FF0000", italic=True)
+            row += 1
+            row_dict[key] = {'min': row}
+            for val in value:
+                additional_worksheet.cell(column=column_index_from_string(additional_column), row=row, value=val)
+                row += 1
+            row_dict[key]['max'] = row - 1
+        for key, values in row_dict.items():
+            new_range = DefinedName(key, attr_text='{}!${}${}:${}${}'.format(quote_sheetname(additional_worksheet.title), additional_column, values['min'], additional_column, values['max']))
+            workbook.defined_names.append(new_range)
+        params["formula1"] = "=INDIRECT(${}2)".format(set_columns[self.linked_column])
+        dv = DataValidation(**params)
+        dv.add("{}2:{}1048576".format(column, column))
+        return dv
+
+    def describe(self, column_name):
+        return "{} : Linked values to column {}".format(column_name, self.linked_column)
+
+
 class DateValidator(Validator):
     """ Validates that a field is a Date """
 
     def __init__(self, day_first=True, **kwargs):
         super(DateValidator, self).__init__(**kwargs)
-        self.invalid_dict = {"invalid_set": set(), "invalid_rows": set()}
         self.day_first = day_first
 
     def validate(self, field, row_number, row={}):
@@ -237,7 +303,6 @@ class EmailValidator(Validator):
 
     def __init__(self, **kwargs):
         super(EmailValidator, self).__init__(**kwargs)
-        self.invalid_dict = {"invalid_set": set(), "invalid_rows": set()}
 
     def validate(self, field, row_number, row={}):
         if field or not self.empty_ok:
@@ -269,7 +334,6 @@ class OntologyValidator(Validator):
 
     def __init__(self, ontology, root_term="", **kwargs):
         super(OntologyValidator, self).__init__(**kwargs)
-        self.invalid_dict = {"invalid_set": set(), "invalid_rows": set()}
         self.validated_terms = set()
         self.ontology = ontology
         self.root_term = root_term
@@ -299,7 +363,8 @@ class OntologyValidator(Validator):
 
     def generate(self, column, additional_column, additional_worksheet):
         terms = _get_ontological_terms(self.ontology, root_term_iri=self.root_term_iri)
-        additional_worksheet.cell(column=column_index_from_string(additional_column), row=1, value=self.ontology)
+        cell = additional_worksheet.cell(column=column_index_from_string(additional_column), row=1, value=self.ontology)
+        cell.font = Font(color="FF0000", bold=True)
         row = 2
         for term in terms:
             additional_worksheet.cell(column=column_index_from_string(additional_column), row=row, value=term)
@@ -324,7 +389,6 @@ class UniqueValidator(Validator):
     def __init__(self, unique_with=[], **kwargs):
         super(UniqueValidator, self).__init__(**kwargs)
         self.unique_values = set()
-        self.invalid_dict = {"invalid_set": set(), "invalid_rows": set()}
         self.unique_with = unique_with
         self.unique_check = False
 
