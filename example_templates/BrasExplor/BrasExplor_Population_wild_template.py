@@ -39,7 +39,7 @@ class BrasExplor_Population_wild(Checkplate):
         ("Soil surface (22)", SetValidator(valid_values=["Not determinable", "With a smooth crust", "With lumpy structure", "With a gravelly structure"])),
         ("Soil compaction (23)", IntValidator(min=1, max=5)),
         ("Source rock surface (24)", IntValidator(min=0, max=100)),
-        ("Pierraille surface (25)", IntValidator(min=1, max=100)),
+        ("Pierraille surface (25)", IntValidator(min=0, max=100)),
         ("Sand surface (26)", IntValidator(min=1, max=100)),
         ("Vegetation surface (27)", IntValidator(min=1, max=100)),
         ("Color (28)", SetValidator(valid_values=["Black", "Red/Brown", "Brown", "clear"])),
