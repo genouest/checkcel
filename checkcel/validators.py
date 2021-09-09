@@ -161,7 +161,7 @@ class SetValidator(Validator):
 
     def __init__(self, valid_values=set(), **kwargs):
         super(SetValidator, self).__init__(**kwargs)
-        self.valid_values = valid_values
+        self.valid_values = set(valid_values)
         if self.empty_ok:
             self.valid_values.add("")
 
