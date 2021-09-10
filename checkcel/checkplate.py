@@ -41,7 +41,7 @@ class Checkplate(object):
             )
             return exits.UNAVAILABLE
         self.validators = custom_class.validators
-        self.empty_ok = custom_class.get("empty_ok", False)
+        self.empty_ok = custom_class.empty_ok
         for validator in self.validators:
             validator._set_empty_ok(self.empty_ok)
         return self
