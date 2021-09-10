@@ -10,9 +10,14 @@ import inspect
 
 class Checkplate(object):
     """ Base class for templates """
-    def __init__(self, validators={}):
+    def __init__(self, validators={}, empty_ok=False):
         self.logger = logs.logger
         self.validators = validators or getattr(self, "validators", {})
+        # Will be overriden by validators config
+        self.empty_ok = empty_ok
+        # self.trim_values = False
+        for validator in self.validators:
+            validator._set_empty_ok(self.empty_ok)
 
     def load_from_file(self, file_path):
         # Limit conflicts in file name
@@ -36,6 +41,9 @@ class Checkplate(object):
             )
             return exits.UNAVAILABLE
         self.validators = custom_class.validators
+        self.empty_ok = custom_class.get("empty_ok", False)
+        for validator in self.validators:
+            validator._set_empty_ok(self.empty_ok)
         return self
 
     def validate(self):
