@@ -9,5 +9,4 @@ class MyTemplate(Checkplate):
         ("Name@Population", NoValidator()),
         ("frequency", FloatValidator(min=0, max=100)),
         ("remarks", NoValidator()),
-        ("test", FloatValidator(min=0))
     ])
