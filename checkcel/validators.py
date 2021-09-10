@@ -25,7 +25,7 @@ class Validator(object):
     def bad(self):
         raise NotImplementedError
 
-    def validate(self, field, row_number, row, empty_ok=False):
+    def validate(self, field, row_number, row):
         """ Validate the given field. Also is given the row context """
         raise NotImplementedError
 
@@ -37,6 +37,11 @@ class Validator(object):
         """ Return a line of text describing allowed values"""
         raise NotImplementedError
 
+    def _set_empty_ok(self, empty_ok_template):
+        # Override with template value if it was not set (default to None)
+        if self.empty_ok is None:
+            self.empty_ok = empty_ok_template
+
 
 class NoValidator(Validator):
     """ No check"""
@@ -44,7 +49,7 @@ class NoValidator(Validator):
     def __init__(self, **kwargs):
         super(NoValidator, self).__init__(**kwargs)
 
-    def validate(self, field, row_number, row={}, empty_ok=False):
+    def validate(self, field, row_number, row={}):
         pass
 
     def generate(self, column):
@@ -64,7 +69,7 @@ class TextValidator(Validator):
     def __init__(self, **kwargs):
         super(TextValidator, self).__init__(**kwargs)
 
-    def validate(self, field, row_number, row={}, empty_ok=False):
+    def validate(self, field, row_number, row={}):
         if not field and not self.empty_ok:
             raise ValidationException(
                 "Field cannot be empty"
@@ -89,7 +94,7 @@ class CastValidator(Validator):
         self.min = min
         self.max = max
 
-    def validate(self, field, row_number, row={}, empty_ok=False):
+    def validate(self, field, row_number, row={}):
         try:
             if field or not self.empty_ok:
                 field = self.cast(field)
@@ -165,13 +170,20 @@ class SetValidator(Validator):
         if self.empty_ok:
             self.valid_values.add("")
 
-    def validate(self, field, row_number, row={}, empty_ok=False):
+    def validate(self, field, row_number, row={}):
         if field not in self.valid_values:
             self.invalid_dict["invalid_set"].add(field)
             self.invalid_dict["invalid_rows"].add(row_number)
             raise ValidationException(
                 "'{}' is invalid".format(field)
             )
+
+    def _set_empty_ok(self, empty_ok_template):
+        # Override with template value if it was not set (default to None)
+        if self.empty_ok is None:
+            self.empty_ok = empty_ok_template
+        if self.empty_ok:
+            self.valid_values.add("")
 
     @property
     def bad(self):
@@ -214,7 +226,7 @@ class LinkedSetValidator(Validator):
             raise BadValidatorException("Linked column {} is not in file columns".format(self.linked_column))
         self.column_check = True
 
-    def validate(self, field, row_number, row, empty_ok=False):
+    def validate(self, field, row_number, row):
         if not self.column_check:
             self._precheck_unique_with(row)
         if field == "" and self.empty_ok:
@@ -272,7 +284,7 @@ class DateValidator(Validator):
         super(DateValidator, self).__init__(**kwargs)
         self.day_first = day_first
 
-    def validate(self, field, row_number, row={}, empty_ok=False):
+    def validate(self, field, row_number, row={}):
         try:
             if field or not self.empty_ok:
                 # Pandas auto convert fields into dates (ignoring the parse_dates=False)
@@ -304,7 +316,7 @@ class EmailValidator(Validator):
     def __init__(self, **kwargs):
         super(EmailValidator, self).__init__(**kwargs)
 
-    def validate(self, field, row_number, row={}, empty_ok=False):
+    def validate(self, field, row_number, row={}):
         if field or not self.empty_ok:
             try:
                 validate_email(field)
@@ -345,7 +357,7 @@ class OntologyValidator(Validator):
         if self.root_term and not self.root_term_iri:
             raise BadValidatorException("'{}' is not a valid root term for ontology {}".format(self.root_term, self.ontology))
 
-    def validate(self, field, row_number, row={}, empty_ok=False):
+    def validate(self, field, row_number, row={}):
         if field == "" and self.empty_ok:
             return
 
@@ -398,7 +410,7 @@ class UniqueValidator(Validator):
             raise BadValidatorException(extra)
         self.unique_check = True
 
-    def validate(self, field, row_number, row={}, empty_ok=False):
+    def validate(self, field, row_number, row={}):
         if field == "" and self.empty_ok:
             return
         if self.unique_with and not self.unique_check:
@@ -492,9 +504,3 @@ def _get_ontological_terms(ontology, root_term_iri=""):
             terms.add(term["label"])
 
     return terms
-
-
-def _set_empty_ok(self, empty_ok_template):
-    # Override with tempalte value if it was not set (default to None)
-    if self.empty_ok is None:
-        self.empty_ok = empty_ok_template

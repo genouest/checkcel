@@ -96,6 +96,8 @@ class Checkcel(Checkplate):
             )
             return False
 
+        df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
+
         self.column_set = set(df.columns)
         validator_set = set(self.validators)
         self.missing_validators = self.column_set - validator_set
