@@ -25,7 +25,8 @@ class Checkcel(Checkplate):
         self.delimiter = delimiter
         self.sheet = int(sheet)
         self.row = row
-        self.line_count = 0
+        # This value is used for display. Pandas skips the header row
+        self.line_count = row + 1
         self.column_set = set()
         self.ignore_missing_validators = False
 
