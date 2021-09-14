@@ -5,7 +5,7 @@ Basic validations (sets, whole, decimals, unicity, emails, dates) are included, 
 (Using the [OLS API](https://www.ebi.ac.uk/ols/index))
 
 Checkcel (tmp) works with python templates to for the generation and validation.  
-Examples are available in the *example_templates* folder.  
+Examples are available [here](https://github.com/mboudet/checkcel_templates).  
 
 Three commands are available:
 
