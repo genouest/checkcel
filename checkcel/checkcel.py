@@ -87,7 +87,7 @@ class Checkcel(Checkplate):
         )
 
         if self.type == "spreadsheet":
-            df = pandas.read_excel(self.source, sheet_name=self.sheet, convert_float=False, keep_default_na=False, skiprows=self.row)
+            df = pandas.read_excel(self.source, sheet_name=self.sheet, keep_default_na=False, skiprows=self.row)
         else:
             df = pandas.read_csv(self.source, sep=self.delimiter, skiprows=self.row)
 
