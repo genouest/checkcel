@@ -361,7 +361,11 @@ class OntologyValidator(Validator):
         if field == "" and self.empty_ok:
             return
 
-        if not (field in self.validated_terms or field in self.invalid_set):
+        if field in self.invalid_dict["invalid_set"]:
+            self.invalid_dict["invalid_rows"].add(row_number)
+            raise ValidationException("{} is not an ontological term".format(field))
+
+        if field not in self.validated_terms:
             ontological_term = _validate_ontological_term(field, self.ontology, self.root_term_iri)
             if not ontological_term:
                 self.invalid_dict["invalid_set"].add(field)
