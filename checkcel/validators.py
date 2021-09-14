@@ -393,6 +393,7 @@ class OntologyValidator(Validator):
         text = "{} : Ontological term from {} ontology.".format(column_name, self.ontology)
         if self.root_term:
             text += " Root term is : {}".format(self.root_term)
+        return text
 
 
 class UniqueValidator(Validator):
@@ -469,7 +470,7 @@ def _validate_ontological_term(term, ontology, root_term_iri="", return_uri=Fals
     body = {
         "q": term,
         "ontology": ontology.lower(),
-        "type": "individual",
+        "type": "class",
         "exact": True,
         "queryFields": ["label", "synonym"]
     }
