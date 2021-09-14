@@ -79,6 +79,10 @@ Checkerator(
 # Templates
 A template needs to contain a class inheriting the Checkplate class.  
 This class must implement a `validators` attribute, which must be a dictionary where the keys are the column names, and the values the validator.  
+This class may also implement an optional `empty_ok`, which will manage the default behavior of the validators.  
+Each validator's attribute `empty_ok` value will override the template.
+
+
 If you plan on generating a file with the template, it might be better to use an `OrderedDict`.  
 See the examples for more information.  
 
