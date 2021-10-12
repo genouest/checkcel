@@ -6,6 +6,7 @@ import tempfile
 import shutil
 import sys
 import inspect
+from copy import deepcopy
 
 
 class Checkplate(object):
@@ -40,7 +41,7 @@ class Checkplate(object):
                 "Could not find a subclass of Checkplate in the provided file."
             )
             return exits.UNAVAILABLE
-        self.validators = custom_class.validators
+        self.validators = deepcopy(custom_class.validators)
         self.empty_ok = getattr(custom_class, 'empty_ok', False)
         for key, validator in self.validators.items():
             validator._set_empty_ok(self.empty_ok)
