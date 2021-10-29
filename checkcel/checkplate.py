@@ -11,14 +11,16 @@ from copy import deepcopy
 
 class Checkplate(object):
     """ Base class for templates """
-    def __init__(self, validators={}, empty_ok=False):
+    def __init__(self, validators={}, empty_ok=False, ignore_case=False, ignore_space=False):
         self.logger = logs.logger
         self.validators = validators or getattr(self, "validators", {})
         # Will be overriden by validators config
         self.empty_ok = empty_ok
+        self.ignore_case = ignore_case
+        self.ignore_space = ignore_space
         # self.trim_values = False
         for validator in self.validators:
-            validator._set_empty_ok(self.empty_ok)
+            validator._set_attributes(self.empty_ok, self.ignore_case, self.ignore_space)
 
     def load_from_file(self, file_path):
         # Limit conflicts in file name
@@ -44,7 +46,7 @@ class Checkplate(object):
         self.validators = deepcopy(custom_class.validators)
         self.empty_ok = getattr(custom_class, 'empty_ok', False)
         for key, validator in self.validators.items():
-            validator._set_empty_ok(self.empty_ok)
+            validator._set_attributes(self.empty_ok, self.ignore_case, self.ignore_space)
         return self
 
     def validate(self):

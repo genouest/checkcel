@@ -16,10 +16,12 @@ from checkcel.exceptions import ValidationException, BadValidatorException
 class Validator(object):
     """ Generic Validator class """
 
-    def __init__(self, empty_ok=None):
+    def __init__(self, empty_ok=None, ignore_case=None, ignore_space=None):
         self.invalid_dict = defaultdict(set)
         self.fail_count = 0
         self.empty_ok = empty_ok
+        self.ignore_case = ignore_case
+        self.ignore_space = ignore_space
 
     @property
     def bad(self):
@@ -37,10 +39,14 @@ class Validator(object):
         """ Return a line of text describing allowed values"""
         raise NotImplementedError
 
-    def _set_empty_ok(self, empty_ok_template):
+    def _set_attributes(self, empty_ok_template, ignore_case_template, ignore_space_template):
         # Override with template value if it was not set (default to None)
         if self.empty_ok is None:
             self.empty_ok = empty_ok_template
+        if self.ignore_case is None:
+            self.ignore_case = ignore_case_template
+        if self.ignore_space is None:
+            self.ignore_space = ignore_space_template
 
 
 class NoValidator(Validator):
@@ -171,6 +177,11 @@ class SetValidator(Validator):
             self.valid_values.add("")
 
     def validate(self, field, row_number, row={}):
+        if self.ignore_case:
+            field = field.lower()
+        if self.ignore_space:
+            field = field.strip()
+
         if field not in self.valid_values:
             self.invalid_dict["invalid_set"].add(field)
             self.invalid_dict["invalid_rows"].add(row_number)
@@ -178,12 +189,20 @@ class SetValidator(Validator):
                 "'{}' is invalid".format(field)
             )
 
-    def _set_empty_ok(self, empty_ok_template):
+    def _set_attributes(self, empty_ok_template, ignore_case_template, ignore_space_template):
         # Override with template value if it was not set (default to None)
         if self.empty_ok is None:
             self.empty_ok = empty_ok_template
         if self.empty_ok:
             self.valid_values.add("")
+
+        if self.ignore_case is None:
+            self.ignore_case = ignore_case_template
+        if self.ignore_case:
+            self.valid_values = set([value.lower() for value in self.valid_values])
+
+        if self.ignore_space is None:
+            self.ignore_space = ignore_space_template
 
     @property
     def bad(self):
