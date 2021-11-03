@@ -172,6 +172,7 @@ class SetValidator(Validator):
 
     def __init__(self, valid_values=set(), **kwargs):
         super(SetValidator, self).__init__(**kwargs)
+        self.ordered_values = valid_values
         self.valid_values = set(valid_values)
         if self.empty_ok:
             self.valid_values.add("")
@@ -215,20 +216,20 @@ class SetValidator(Validator):
             cell = additional_worksheet.cell(column=column_index_from_string(additional_column), row=1, value=column_name)
             cell.font = Font(color="FF0000", bold=True)
             row = 2
-            for term in self.valid_values:
+            for term in self.ordered_values:
                 additional_worksheet.cell(column=column_index_from_string(additional_column), row=row, value=term)
                 row += 1
             params["formula1"] = "{}!${}$2:${}${}".format(quote_sheetname(additional_worksheet.title), additional_column, additional_column, row - 1)
         else:
             params = {"type": "list"}
-            values = ",".join(self.valid_values)
+            values = ",".join(self.ordered_values)
             params["formula1"] = '"{}"'.format(values)
         dv = DataValidation(**params)
         dv.add("{}2:{}1048576".format(column, column))
         return dv
 
     def describe(self, column_name):
-        return "{} : ({})".format(column_name, ", ".join(self.valid_values))
+        return "{} : ({})".format(column_name, ", ".join(self.ordered_values))
 
 
 class LinkedSetValidator(Validator):
