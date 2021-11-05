@@ -322,7 +322,7 @@ class DateValidator(Validator):
 
     def generate(self, column, additional_column=None, additional_worksheet=None):
         # GreaterThanOrEqual for validity with ODS.
-        dv = DataValidation(type="date", formula1='12/30/1899', operator='greaterThanOrEqual')
+        dv = DataValidation(type="date", formula1='01/01/1900', operator='greaterThanOrEqual')
         dv.add("{}2:{}1048576".format(column, column))
         return dv
 
