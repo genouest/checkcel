@@ -1,6 +1,7 @@
 from __future__ import division
 from collections import defaultdict
 import pandas
+import warnings
 
 from checkcel.exceptions import ValidationException
 from checkcel.checkplate import Checkplate
@@ -87,7 +88,9 @@ class Checkcel(Checkplate):
         )
 
         if self.type == "spreadsheet":
-            df = pandas.read_excel(self.source, sheet_name=self.sheet, keep_default_na=False, skiprows=self.row)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                df = pandas.read_excel(self.source, sheet_name=self.sheet, keep_default_na=False, skiprows=self.row)
         else:
             df = pandas.read_csv(self.source, sep=self.delimiter, skiprows=self.row)
 
