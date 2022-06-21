@@ -89,7 +89,7 @@ class TextValidator(Validator):
         return None
 
     def describe(self, column_name):
-        return "{} : Free text".format(column_name)
+        return "{} : Free text {}".format(column_name, "(required)" if not self.empty_ok else "")
 
 
 class CastValidator(Validator):
@@ -146,6 +146,9 @@ class CastValidator(Validator):
             text += " >= {}".format(self.min)
         elif self.max is not None:
             text += " <= {}".format(self.max)
+
+        if not self.empty_ok:
+            text += " (required)"
         return text
 
 
@@ -229,7 +232,7 @@ class SetValidator(Validator):
         return dv
 
     def describe(self, column_name):
-        return "{} : ({})".format(column_name, ", ".join(self.ordered_values))
+        return "{} : ({}) {}".format(column_name, ", ".join(self.ordered_values), "(required)" if not self.empty_ok else "")
 
 
 class LinkedSetValidator(Validator):
@@ -294,7 +297,7 @@ class LinkedSetValidator(Validator):
         return dv
 
     def describe(self, column_name):
-        return "{} : Linked values to column {}".format(column_name, self.linked_column)
+        return "{} : Linked values to column {} {}".format(column_name, self.linked_column, "(required)" if not self.empty_ok else "")
 
 
 class DateValidator(Validator):
@@ -327,7 +330,7 @@ class DateValidator(Validator):
         return dv
 
     def describe(self, column_name):
-        return "{} : Date".format(column_name)
+        return "{} : Date {}".format(column_name, "(required)" if not self.empty_ok else "")
 
 
 class EmailValidator(Validator):
@@ -358,7 +361,7 @@ class EmailValidator(Validator):
         return dv
 
     def describe(self, column_name):
-        return "{} : Email".format(column_name)
+        return "{} : Email {}".format(column_name, "(required)" if not self.empty_ok else "")
 
 
 class OntologyValidator(Validator):
@@ -417,6 +420,8 @@ class OntologyValidator(Validator):
         text = "{} : Ontological term from {} ontology.".format(column_name, self.ontology)
         if self.root_term:
             text += " Root term is : {}".format(self.root_term)
+        if not self.empty_ok:
+            text += " (required)"
         return text
 
 
@@ -472,6 +477,8 @@ class UniqueValidator(Validator):
         text = "{} : Unique value".format(column_name)
         if self.unique_with:
             text += " Must be unique with column(s) {}".format(", ".join(self.unique_with))
+        if not self.empty_ok:
+            text += " (required)"
         return text
 
 
