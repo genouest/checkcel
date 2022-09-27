@@ -1,11 +1,15 @@
 from checkcel import logs
 from checkcel import exits
+from checkcel import validators
 
+import inspect
+import json
 import os
 import tempfile
 import shutil
 import sys
-import inspect
+import yaml
+from collections import OrderedDict
 from copy import deepcopy
 
 
@@ -49,6 +53,36 @@ class Checkplate(object):
             validator._set_attributes(self.empty_ok, self.ignore_case, self.ignore_space)
         return self
 
+    def load_from_json_file(self, file_path):
+        if not os.path.isfile(file_path):
+            self.logger.error(
+                "Could not find a file at path {}".format(file_path)
+            )
+            return exits.NOINPUT
+
+        with open(file_path, "r") as f:
+            data = json.load(f)
+
+        return self._load_from_dict(data)
+
+    def load_from_yaml_file(self, file_path):
+        if not os.path.isfile(file_path):
+            self.logger.error(
+                "Could not find a file at path {}".format(file_path)
+            )
+            return exits.NOINPUT
+
+        with open(file_path, "r") as f:
+            try:
+                data = yaml.safe_load(f)
+            except yaml.YAMLError:
+                self.logger.error(
+                    "File {} is not a valid yaml file".format(file_path)
+                )
+                return exits.UNAVAILABLE
+
+        return self._load_from_dict(data)
+
     def validate(self):
         raise NotImplementedError
 
@@ -63,3 +97,37 @@ class Checkplate(object):
         return bool(
             inspect.isclass(item) and issubclass(item, Checkplate) and hasattr(item, "validators") and not name.startswith("_")
         )
+
+    def _load_from_dict(self, data):
+        if 'validators' not in data or not isinstance(data['validators'], list):
+            self.logger.error(
+                "Could not find a list of validators in data"
+            )
+            return exits.UNAVAILABLE
+
+        self.empty_ok = data.get("empty_ok", False)
+        validators_list = []
+        self.validators = {}
+
+        for validator in data['validators']:
+            if 'type' not in validator or 'name' not in validator:
+                self.logger.error(
+                    "Malformed Checkcel Validator. Require both 'type' and 'name' key"
+                )
+                return exits.UNAVAILABLE
+            options = validator.get('options', {})
+            name = validator.get('name')
+            try:
+                validator_class = getattr(validators, validator['type'])
+                val = validator_class(**options)._set_attributes(self.empty_ok, self.ignore_case, self.ignore_space)
+            except AttributeError:
+                self.logger.error(
+                    "{} is not a valid Checkcel Validator".format(validator['type'])
+                )
+                return exits.UNAVAILABLE
+
+            validators_list.append((name, val))
+
+        self.validators = OrderedDict(validators_list)
+
+        return self
