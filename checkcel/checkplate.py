@@ -119,7 +119,8 @@ class Checkplate(object):
             name = validator.get('name')
             try:
                 validator_class = getattr(validators, validator['type'])
-                val = validator_class(**options)._set_attributes(self.empty_ok, self.ignore_case, self.ignore_space)
+                val = validator_class(**options)
+                val._set_attributes(self.empty_ok, self.ignore_case, self.ignore_space)
             except AttributeError:
                 self.logger.error(
                     "{} is not a valid Checkcel Validator".format(validator['type'])

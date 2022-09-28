@@ -67,7 +67,7 @@ class Checkxtractor(object):
     def _predict_type(self, validation, column_name):
         if validation.type == "decimal":
             self.used_validators.add("FloatValidator")
-            return self._format_validator("FloatValidator", self._get_numbers_limits(validation))
+            return self._format_validator("FloatValidator", self._get_numbers_limits(validation, is_float=True))
         if validation.type == "whole":
             self.used_validators.add("IntValidator")
             return self._format_validator("IntValidator", self._get_numbers_limits(validation))
@@ -86,14 +86,15 @@ class Checkxtractor(object):
         else:
             return self._format_validator("NoValidator", {})
 
-    def _get_numbers_limits(self, validation):
+    def _get_numbers_limits(self, validation, is_float=False):
+        cast_func = float if is_float else int
         # Compatibility for "between"
         if validation.operator == "between" or (validation.operator is None and validation.formula1 is not None and validation.formula2 is not None):
-            return {"min": validation.formula1, "max": validation.formula2}
+            return {"min": cast_func(validation.formula1), "max": cast_func(validation.formula2)}
         elif validation.operator in ["greaterThan", "greaterThanOrEqual"]:
-            return {"min": validation.formula1}
+            return {"min": cast_func(validation.formula1)}
         elif validation.operator in ["lessThan", "lessThanOrEqual"]:
-            return {"max": validation.formula1}
+            return {"max": cast_func(validation.formula1)}
         else:
             return {}
 
@@ -167,14 +168,14 @@ class Checkxtractor(object):
         list_data = []
         for key, values in data.items():
             list_data.append("{}={}".format(key, repr(values)))
-        return " ,".join(list_data)
+        return ", ".join(list_data)
 
     def _generate_script(self, output_file, validation_dict):
         if self.template_type == "python":
             data = self._generate_python_script(validation_dict)
             with open(output_file, 'w') as f:
                 f.write(data)
-        elif self.template_type in ['json, yml']:
+        elif self.template_type in ['json', 'yml']:
             data = self._generate_template_script(validation_dict)
             with open(output_file, 'w') as f:
                 if self.template_type == "json":
