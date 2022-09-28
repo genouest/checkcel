@@ -46,7 +46,7 @@ def parse_args():
         "--sheet",
         dest="sheet",
         default=0,
-        help="Sheet to validate",
+        help="Sheet to validate. Default to 0 for first sheet",
     )
 
     parser_validate.add_argument(
@@ -173,9 +173,14 @@ def main():
         return exits.OK if all_passed else exits.DATAERR
 
     else:
-        passed = Checkerator(
-            output=arguments.output,
-        ).load_from_python_file(arguments.template)
+        passed = Checkerator(output=arguments.output)
+        if arguments.template_type == "python":
+            passed.load_from_python_file(arguments.template)
+        elif arguments.template_type == "json":
+            passed.load_from_json_file(arguments.template)
+        elif arguments.template_type == "yml":
+            passed.load_from_yaml_file(arguments.template)
+
         if not isinstance(passed, Checkplate):
             return passed
         passed.generate()

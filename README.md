@@ -30,6 +30,9 @@ Since Checkcel has to make some assumptions regarding validations (and cannot de
 The `generate` command will generate an .xlsx with validation already set-up. A README sheet will also be created, showing expected values for all columns.  
 (For now, due to the lack of python libraries for interacting with .ods files, they cannot be generated. However, converting the xlsx to ods manually should work without breaking validation.)  
 
+Optional parameter :
+* --template Type of template "python", "json" or "yml" (default to python)
+
 Syntax:
 `checkcel generate mytemplate.py myoutput.xlsx`
 
@@ -70,11 +73,25 @@ Checkcel(
         type="spreadsheet | tabular",
         delimiter=",",
         sheet="0"
-).load_from_python_file(your_template_file).validate()
+).load_from_python_file(your_python_template_file).validate()
 
 Checkerator(
         output=your_output_file,
-).load_from_python_file(your_template_file).generate()
+).load_from_python_file(your_python_template_file).generate()
+
+Checkcel(
+        source=your_xlsx_file,
+        type="spreadsheet | tabular",
+        delimiter=",",
+        sheet="0"
+).load_from_yaml_file(your_yaml_template_file).validate()
+
+Checkcel(
+        source=your_xlsx_file,
+        type="spreadsheet | tabular",
+        delimiter=",",
+        sheet="0"
+).load_from_json_file(your_json_template_file).validate()
 
 ```
 
