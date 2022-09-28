@@ -2,3 +2,4 @@ openpyxl
 odfpy
 pandas
 email-validator
+pyyaml

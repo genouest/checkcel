@@ -11,7 +11,7 @@ class Checkcel(Checkplate):
     def __init__(
         self,
         source,
-        type="spreadsheet",
+        format="spreadsheet",
         delimiter=",",
         sheet=0,
         row=0,
@@ -22,7 +22,7 @@ class Checkcel(Checkplate):
         self.missing_validators = None
         self.missing_fields = None
         self.source = source
-        self.type = type
+        self.format = format
         self.delimiter = delimiter
         self.sheet = int(sheet)
         self.row = row
@@ -31,7 +31,7 @@ class Checkcel(Checkplate):
         self.column_set = set()
         self.ignore_missing_validators = False
 
-        if type not in ["spreadsheet", "tabular"]:
+        if format not in ["spreadsheet", "tabular"]:
             raise Exception("Type must be either spreadsheet or tabular")
 
     def _log_debug_failures(self):
@@ -87,7 +87,7 @@ class Checkcel(Checkplate):
             "\nValidating {}(source={})".format(self.__class__.__name__, self.source)
         )
 
-        if self.type == "spreadsheet":
+        if self.format == "spreadsheet":
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
                 df = pandas.read_excel(self.source, sheet_name=self.sheet, keep_default_na=False, skiprows=self.row)

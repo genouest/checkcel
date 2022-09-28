@@ -238,7 +238,7 @@ class SetValidator(Validator):
 class LinkedSetValidator(Validator):
     """ Validates that a field is in the given set of values """
 
-    def __init__(self, linked_column, valid_values, **kwargs):
+    def __init__(self, linked_column="", valid_values={}, **kwargs):
         super(LinkedSetValidator, self).__init__(**kwargs)
         self.valid_values = valid_values
         self.linked_column = linked_column

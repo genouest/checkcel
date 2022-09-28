@@ -17,6 +17,7 @@ The `extract` command will try to extract a Python template (with validation set
 
 Optional parameter :
 * --sheet for the sheet to validate (First sheet is number 0. Default to 0)
+* --template Type of template "python", "json" or "yml" (default to python)
 
 Syntax:
 `Checkcel extract myinputfile.xlsx myoutfile.py --sheet mysheetnumber`
@@ -39,8 +40,9 @@ The `validate` command will check the validity of a file against a template.
 
 Optional parameters :
 * --sheet for the sheet to validate (First sheet is number 0. Default to 0)
-* --type "spreadsheet" or "tabular" (default to spreadsheet)
+* --format "spreadsheet" or "tabular" (default to spreadsheet)
 * --delimiter Tabular file delimiter (default to ",")
+* --template Type of template "python", "json" or "yml" (default to python)
 
 Syntax:
 ```bash
@@ -68,11 +70,11 @@ Checkcel(
         type="spreadsheet | tabular",
         delimiter=",",
         sheet="0"
-).load_from_file(your_template_file).validate()
+).load_from_python_file(your_template_file).validate()
 
 Checkerator(
         output=your_output_file,
-).load_from_file(your_template_file).generate()
+).load_from_python_file(your_template_file).generate()
 
 ```
 

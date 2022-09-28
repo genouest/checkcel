@@ -26,7 +26,7 @@ class Checkplate(object):
         for validator in self.validators:
             validator._set_attributes(self.empty_ok, self.ignore_case, self.ignore_space)
 
-    def load_from_file(self, file_path):
+    def load_from_python_file(self, file_path):
         # Limit conflicts in file name
         with tempfile.TemporaryDirectory() as dirpath:
             shutil.copy2(file_path, dirpath)
