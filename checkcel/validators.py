@@ -62,7 +62,7 @@ class NoValidator(Validator):
         return None
 
     def describe(self, column_name):
-        return "{} : Free text".format(column_name)
+        return "{} : Free value".format(column_name)
 
     @property
     def bad(self):
@@ -232,7 +232,7 @@ class SetValidator(Validator):
         return dv
 
     def describe(self, column_name):
-        return "{} : ({}) {}".format(column_name, ", ".join(self.ordered_values), "(required)" if not self.empty_ok else "")
+        return "{} : (Allowed values : {}) {}".format(column_name, ", ".join(self.ordered_values), "(required)" if not self.empty_ok else "")
 
 
 class LinkedSetValidator(Validator):
