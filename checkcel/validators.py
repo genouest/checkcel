@@ -333,6 +333,38 @@ class DateValidator(Validator):
         return "{} : Date {}".format(column_name, "(required)" if not self.empty_ok else "")
 
 
+class TimeValidator(Validator):
+    """ Validates that a field is a Time """
+
+    def __init__(self, **kwargs):
+        super(TimeValidator, self).__init__(**kwargs)
+
+    def validate(self, field, row_number, row={}):
+        try:
+            if field or not self.empty_ok:
+                # Pandas auto convert fields into dates (ignoring the parse_dates=False)
+                field = str(field)
+                parser.parse(field).time()
+
+        except parser.ParserError as e:
+            self.invalid_dict["invalid_set"].add(field)
+            self.invalid_dict["invalid_rows"].add(row_number)
+            raise ValidationException(e)
+
+    @property
+    def bad(self):
+        return self.invalid_dict
+
+    def generate(self, column, additional_column=None, additional_worksheet=None):
+        # GreaterThanOrEqual for validity with ODS.
+        dv = DataValidation(type="time")
+        dv.add("{}2:{}1048576".format(column, column))
+        return dv
+
+    def describe(self, column_name):
+        return "{} : Time {}".format(column_name, "(required)" if not self.empty_ok else "")
+
+
 class EmailValidator(Validator):
     """ Validates that a field is in the given set """
 

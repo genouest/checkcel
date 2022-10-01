@@ -112,6 +112,7 @@ See the examples for more information.
 * FloatValidator(min="", max="", empty_ok=False)
 * SetValidator(valid_values=[], empty_ok=False)
 * EmailValidator(empty_ok=False)
-* DateValidator(empty_ok=False)
+* DateValidator(empty_ok=False, day_first=True)
+* TimeValidator(empty_ok=False)
 * UniqueValidator(empty_ok=False)
 * OntologyValidator(ontology, root_term="", empty_ok=False)
