@@ -59,7 +59,7 @@ class Checkxtractor(object):
         if cell_range.min_row > self.row + 2:
             return []
 
-        if cell_range.min_row == cell_range.max_row and not(cell_range.min_col == cell_range.max_col):
+        if cell_range.min_row == cell_range.max_row and not (cell_range.min_col == cell_range.max_col):
             # Might be a mistake, ignore it
             return []
         return set([cell_range.min_col, cell_range.max_col])
