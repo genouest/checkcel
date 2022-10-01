@@ -3,15 +3,19 @@ from openpyxl import load_workbook
 from openpyxl.worksheet.cell_range import CellRange
 from openpyxl.utils import get_column_letter
 
+import json
+import yaml
+
 
 class Checkxtractor(object):
     """ Extract validation value from xlsx file (only) """
-    def __init__(self, source, output, sheet=0, row=0):
+    def __init__(self, source, output, sheet=0, row=0, template_type="python"):
         self.logger = logs.logger
         self.source = source
         self.output = output
         self.sheet = int(sheet)
         self.row = int(row)
+        self.template_type = template_type
         self.columns_list = []
         self.validation_list = []
         self.names = {}
@@ -49,9 +53,7 @@ class Checkxtractor(object):
             predicted_type = self._predict_type(validation, get_column_letter(col))
             # Will be overriden if conflicting values...
             validation_dict[self.columns_list[col - 1]] = predicted_type
-        data = self._generate_script(validation_dict)
-        with open(self.output, "w") as f:
-            f.write(data)
+        self._generate_script(self.output, validation_dict)
 
     def _get_column(self, cell_range):
         if cell_range.min_row > self.row + 2:
@@ -65,35 +67,36 @@ class Checkxtractor(object):
     def _predict_type(self, validation, column_name):
         if validation.type == "decimal":
             self.used_validators.add("FloatValidator")
-            return "FloatValidator({})".format(self._get_numbers_limits(validation))
+            return self._format_validator("FloatValidator", self._get_numbers_limits(validation, is_float=True))
         if validation.type == "whole":
             self.used_validators.add("IntValidator")
-            return "IntValidator({})".format(self._get_numbers_limits(validation))
+            return self._format_validator("IntValidator", self._get_numbers_limits(validation))
         if validation.type == "date":
             self.used_validators.add("DateValidator")
-            return "DateValidator()"
+            return self._format_validator("DateValidator", {})
         if validation.type == "list":
             if not validation.formula1:
-                return "NoValidator()"
+                return self._format_validator("NoValidator", {})
             if validation.formula1.startswith("INDIRECT("):
                 self.used_validators.add("LinkedSetValidator")
-                return "LinkedSetValidator({})".format(self._get_linked_set_values(validation, column_name))
+                return self._format_validator("LinkedSetValidator", self._get_linked_set_values(validation, column_name))
             else:
                 self.used_validators.add("SetValidator")
-                return "SetValidator({})".format(self._get_set_values(validation, column_name))
+                return self._format_validator("SetValidator", self._get_set_values(validation, column_name))
         else:
-            return "NoValidator()"
+            return self._format_validator("NoValidator", {})
 
-    def _get_numbers_limits(self, validation):
+    def _get_numbers_limits(self, validation, is_float=False):
+        cast_func = float if is_float else int
         # Compatibility for "between"
         if validation.operator == "between" or (validation.operator is None and validation.formula1 is not None and validation.formula2 is not None):
-            return 'min={}, max={}'.format(validation.formula1, validation.formula2)
+            return {"min": cast_func(validation.formula1), "max": cast_func(validation.formula2)}
         elif validation.operator in ["greaterThan", "greaterThanOrEqual"]:
-            return 'min={}'.format(validation.formula1)
+            return {"min": cast_func(validation.formula1)}
         elif validation.operator in ["lessThan", "lessThanOrEqual"]:
-            return 'max={}'.format(validation.formula1)
+            return {"max": cast_func(validation.formula1)}
         else:
-            return ''
+            return {}
 
     def _get_linked_set_values(self, validation, column_name):
         formula = validation.formula1
@@ -102,7 +105,7 @@ class Checkxtractor(object):
         related_column_name = self.columns_list[self.ws[cell_coord].column - 1]
         cell_column = self.ws[cell_coord].column_letter
         if cell_column not in self.set_values:
-            return ""
+            return {}
         for value in self.set_values[cell_column]:
             if value in self.names:
                 values_dict[value] = []
@@ -115,21 +118,15 @@ class Checkxtractor(object):
                     else:
                         values_dict[value].append(ws[coords].value)
         if not values_dict:
-            return ""
-        val_list = []
-        for key, values in values_dict.items():
-            val_list.append('"{}": [{}]'.format(key, ', '.join(['"{}"'.format(value) for value in values])))
-        return '"{}", {{{}}}'.format(related_column_name, ", ".join(val_list))
+            return {}
+        return {"linked_column": related_column_name, "valid_values": values_dict}
 
     def _get_set_values(self, validation, column_name):
         formula = validation.formula1
         if "," in formula:
             value_list = formula.replace('"', '').split(",")
             self.set_values[column_name] = value_list
-            value_list = ['"{}"'.format(value) for value in value_list]
-            value_string = ', '.join(value_list)
-
-            return 'valid_values=[{}]'.format(value_string)
+            return {'valid_values': value_list}
         # If it uses names, extract values
         elif formula.lstrip("=") in self.names:
             cell_range = self.names[formula.lstrip("=")]
@@ -143,9 +140,7 @@ class Checkxtractor(object):
                 else:
                     value_list.append(ws[coords].value)
             self.set_values[column_name] = value_list
-            value_list = ['"{}"'.format(value) for value in value_list]
-            value_string = ', '.join(value_list)
-            return 'valid_values=[{}]'.format(value_string)
+            return {'valid_values': value_list}
         try:
             cell_range = CellRange(range_string=formula.lstrip("="))
             value_list = []
@@ -155,16 +150,40 @@ class Checkxtractor(object):
             for cell_coord in cell_range.cells:
                 value_list.append(ws[cell_coord])
             self.set_values[column_name] = value_list
-            value_list = ['"{}"'.format(value) for value in value_list]
-            value_string = ', '.join(value_list)
-            return 'valid_values=[{}]'.format(value_string)
-
+            return {'valid_values': value_list}
         except ValueError:
-            return ""
+            return {}
         else:
-            return ""
+            return {}
 
-    def _generate_script(self, validation_dict):
+    def _format_validator(self, validator, options={}):
+        if self.template_type in ['json', 'yml']:
+            return {'type': validator, 'options': options}
+        else:
+            return "{}({})".format(validator, self._stringify_dict(options))
+
+    def _stringify_dict(self, data):
+        if not data:
+            return ""
+        list_data = []
+        for key, values in data.items():
+            list_data.append("{}={}".format(key, repr(values)))
+        return ", ".join(list_data)
+
+    def _generate_script(self, output_file, validation_dict):
+        if self.template_type == "python":
+            data = self._generate_python_script(validation_dict)
+            with open(output_file, 'w') as f:
+                f.write(data)
+        elif self.template_type in ['json', 'yml']:
+            data = self._generate_template_script(validation_dict)
+            with open(output_file, 'w') as f:
+                if self.template_type == "json":
+                    json.dump(data, f, ensure_ascii=False, indent=4)
+                else:
+                    f.write(yaml.dump(data, default_flow_style=False))
+
+    def _generate_python_script(self, validation_dict):
         self.used_validators.add("NoValidator")
         validators_list = list(self.used_validators)
         content = ("from checkcel import Checkplate\n"
@@ -181,3 +200,12 @@ class Checkxtractor(object):
         content = content.rstrip(",\n") + "\n"
         content += "    ])\n"
         return content
+
+    def _generate_template_script(self, validation_dict):
+        data = {"empty_ok": False, "validators": []}
+        for column in self.columns_list:
+            validator = validation_dict.get(column, {"type": "NoValidator"})
+            validator['name'] = column
+            data['validators'].append(validator)
+
+        return data

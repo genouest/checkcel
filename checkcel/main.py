@@ -24,7 +24,7 @@ def parse_args():
 
     parser_validate.add_argument(
         dest="template",
-        help="Python template to use for validation",
+        help="Template to use for validation",
     )
 
     parser_validate.add_argument(
@@ -33,9 +33,9 @@ def parse_args():
     )
 
     parser_validate.add_argument(
-        "-t",
-        "--type",
-        dest="type",
+        "-f",
+        "--format",
+        dest="format",
         choices=['spreadsheet', 'tabular'],
         help="Type of file to validate : spreadsheet of tabular",
         default="spreadsheet"
@@ -46,7 +46,7 @@ def parse_args():
         "--sheet",
         dest="sheet",
         default=0,
-        help="Sheet to validate",
+        help="Sheet to validate. Default to 0 for first sheet",
     )
 
     parser_validate.add_argument(
@@ -65,16 +65,34 @@ def parse_args():
         help="Ignore the first n rows (default 0)",
     )
 
+    parser_validate.add_argument(
+        "-t",
+        "--template",
+        dest="template_type",
+        choices=['python', 'json', 'yml'],
+        help="Template type (python, json, or yml)",
+        default="python"
+    )
+
     parser_generate = subparsers.add_parser('generate', help='Generate an xlsx file')
 
     parser_generate.add_argument(
         dest="template",
-        help="Python template to use for validation",
+        help="Template to use for validation",
     )
 
     parser_generate.add_argument(
         dest="output",
         help="Output file name",
+    )
+
+    parser_generate.add_argument(
+        "-t",
+        "--template",
+        dest="template_type",
+        choices=['python', 'json', 'yml'],
+        help="Template type (python, json, or yml)",
+        default="python"
     )
 
     parser_extract = subparsers.add_parser('extract', help='Extract a template file')
@@ -105,6 +123,15 @@ def parse_args():
         help="Ignore the first n rows (default 0)",
     )
 
+    parser_extract.add_argument(
+        "-t",
+        "--template",
+        dest="template_type",
+        choices=['python', 'json', 'yml'],
+        help="Template type (python, json, or yml)",
+        default="python"
+    )
+
     return parser.parse_args()
 
 
@@ -118,7 +145,7 @@ def main():
         return exits.NOINPUT
 
     if arguments.subcommand == "extract":
-        Checkxtractor(source=arguments.source, output=arguments.output, sheet=arguments.sheet, row=arguments.row).extract()
+        Checkxtractor(source=arguments.source, output=arguments.output, sheet=arguments.sheet, row=arguments.row, template_type=arguments.template_type).extract()
         return exits.OK
 
     if arguments.subcommand == "validate":
@@ -126,11 +153,19 @@ def main():
 
         passed = Checkcel(
             source=arguments.source,
-            type=arguments.type,
+            format=arguments.format,
             delimiter=arguments.delimiter,
             sheet=arguments.sheet,
             row=arguments.row
-        ).load_from_file(arguments.template)
+        )
+
+        if arguments.template_type == "python":
+            passed.load_from_python_file(arguments.template)
+        elif arguments.template_type == "json":
+            passed.load_from_json_file(arguments.template)
+        elif arguments.template_type == "yml":
+            passed.load_from_yaml_file(arguments.template)
+
         if not isinstance(passed, Checkplate):
             return passed
         passed.validate()
@@ -138,9 +173,14 @@ def main():
         return exits.OK if all_passed else exits.DATAERR
 
     else:
-        passed = Checkerator(
-            output=arguments.output,
-        ).load_from_file(arguments.template)
+        passed = Checkerator(output=arguments.output)
+        if arguments.template_type == "python":
+            passed.load_from_python_file(arguments.template)
+        elif arguments.template_type == "json":
+            passed.load_from_json_file(arguments.template)
+        elif arguments.template_type == "yml":
+            passed.load_from_yaml_file(arguments.template)
+
         if not isinstance(passed, Checkplate):
             return passed
         passed.generate()

@@ -62,7 +62,7 @@ class NoValidator(Validator):
         return None
 
     def describe(self, column_name):
-        return "{} : Free text".format(column_name)
+        return "{} : Free value".format(column_name)
 
     @property
     def bad(self):
@@ -232,13 +232,13 @@ class SetValidator(Validator):
         return dv
 
     def describe(self, column_name):
-        return "{} : ({}) {}".format(column_name, ", ".join(self.ordered_values), "(required)" if not self.empty_ok else "")
+        return "{} : (Allowed values : {}) {}".format(column_name, ", ".join(self.ordered_values), "(required)" if not self.empty_ok else "")
 
 
 class LinkedSetValidator(Validator):
     """ Validates that a field is in the given set of values """
 
-    def __init__(self, linked_column, valid_values, **kwargs):
+    def __init__(self, linked_column="", valid_values={}, **kwargs):
         super(LinkedSetValidator, self).__init__(**kwargs)
         self.valid_values = valid_values
         self.linked_column = linked_column
