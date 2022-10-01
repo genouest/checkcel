@@ -5,11 +5,11 @@ with open('requirements.txt') as f:
 
 setup(
     name="checkcel",
-    version='0.0.1',
+    version='0.0.2',
     description="Generate and validate tabulated/spreadsheet files",
     author="Mateo Boudet",
     author_email="mateo.boudet@inrae.fr",
-    url="https://github.com/mboudet/checkcel",
+    url="https://github.com/genouest/checkcel",
     install_requires=requires,
     packages=find_packages(),
     long_description_content_type="text/markdown",
