@@ -11,12 +11,14 @@ from dateutil import parser
 from collections import defaultdict
 
 from checkcel.exceptions import ValidationException, BadValidatorException
+from checkcel import logs
 
 
 class Validator(object):
     """ Generic Validator class """
 
     def __init__(self, empty_ok=None, ignore_case=None, ignore_space=None):
+        self.logger = logs.logger
         self.invalid_dict = defaultdict(set)
         self.fail_count = 0
         self.empty_ok = empty_ok
@@ -538,7 +540,7 @@ class UniqueValidator(Validator):
 class VocabulaireOuvertValidator(Validator):
     """ Validates that a term is part of the INRAE thesaurus """
 
-    def __init__(self, root_term="", lang="", labellang="", vocab="", **kwargs):
+    def __init__(self, root_term="", lang="en", labellang="en", vocab="thesaurus-inrae", **kwargs):
         super(VocabulaireOuvertValidator, self).__init__(**kwargs)
         self.validated_terms = set()
         self.root_term = root_term
@@ -549,16 +551,13 @@ class VocabulaireOuvertValidator(Validator):
 
         if self.vocab:
             # Check if vocab exist here
-            pass
-            if not True:
-                raise BadValidatorException("'{}' is not a valid ontology".format(self.ontology))
-            if self.root_term and not self.root_term_iri:
-                raise BadValidatorException("'{}' is not a valid root term for ontology {}".format(self.root_term, self.ontology))
+            if not self._validate_vo_vocab():
+                raise BadValidatorException("'{}' is not a valid vocabulary".format(self.ontology))
 
         if self.root_term:
-            # Validate if root term exists here
-            # Only check with vocab and other parameters set
-            pass
+            exists, self.root_term_iri = self._validate_vo_term(self.root_term, return_uri=True)
+            if not exists:
+                raise BadValidatorException("'{}' is not a valid root term. Make sure it is a concept, and not a microthesaurus or group".format(self.root_term))
 
     def validate(self, field, row_number, row={}):
         if field == "" and self.empty_ok:
@@ -569,7 +568,7 @@ class VocabulaireOuvertValidator(Validator):
             raise ValidationException("{} is not an ontological term".format(field))
 
         if field not in self.validated_terms:
-            ontological_term = self._validate_vo_term(field)
+            ontological_term, _ = self._validate_vo_term(field)
             if not ontological_term:
                 self.invalid_dict["invalid_set"].add(field)
                 self.invalid_dict["invalid_rows"].add(row_number)
@@ -581,8 +580,23 @@ class VocabulaireOuvertValidator(Validator):
         return self.invalid_dict
 
     def generate(self, column, additional_column, additional_worksheet):
+        # No point in loading 15000 terms
+        # No easy way to do it anyway
+        if not self.root_term_iri:
+            self.logger.warning(
+                "Warning: no root term used. No validation will be generated"
+            )
+            return None
+
         terms = self._get_vo_terms()
-        cell = additional_worksheet.cell(column=column_index_from_string(additional_column), row=1, value=self.ontology)
+
+        if not terms:
+            self.logger.warning(
+                "Warning: 0 descendants found for root term {}. It might not be a concept".format(self.root_term)
+            )
+            return None
+
+        cell = additional_worksheet.cell(column=column_index_from_string(additional_column), row=1, value=self.vocab)
         cell.font = Font(color="FF0000", bold=True)
         row = 2
         for term in terms:
@@ -592,7 +606,7 @@ class VocabulaireOuvertValidator(Validator):
         params = {"type": "list"}
         params["formula1"] = "{}!${}$2:${}${}".format(quote_sheetname(additional_worksheet.title), additional_column, additional_column, row - 1)
         dv = DataValidation(**params)
-        dv.error = 'Value must be an ontological term'
+        dv.error = 'Value must be from Vocabulaires ouverts'
         dv.add("{}2:{}1048576".format(column, column))
         return dv
 
@@ -604,8 +618,8 @@ class VocabulaireOuvertValidator(Validator):
             text += " (required)"
         return text
 
-    def _validate_vo_term(self, field):
-        params = {"query": field, "unique": True}
+    def _validate_vo_term(self, field, return_uri=False):
+        params = {"query": field, "unique": True, "type": "skos:Concept"}
         if self.root_term_iri:
             params["parent"] = self.root_term_iri
         if self.lang:
@@ -621,9 +635,33 @@ class VocabulaireOuvertValidator(Validator):
         res = r.json()
         # Might be a better way. Check prefLabel?
         if not len(res["results"]) == 1:
-            return False
-        return True
+            return False, ""
 
-    def _get_vo_term(self):
-        # TODO: Get all terms? Can we?
-        pass
+        if return_uri:
+            return True, res["results"][0]['uri']
+        return True, ""
+
+    def _get_vo_terms(self):
+        url = "https://consultation.vocabulaires-ouverts.inrae.fr/rest/v1/{}/narrowerTransitive".format(self.vocab)
+        params = {"uri": self.root_term_iri}
+
+        if self.lang:
+            params['lang'] = self.lang
+
+        r = requests.get(url, params=params)
+        res = r.json()
+
+        return sorted([term['prefLabel'] for term in res['narrowerTransitive'].values() if term.get('prefLabel')])
+
+    def _validate_vo_vocab(self):
+        url = "https://consultation.vocabulaires-ouverts.inrae.fr/rest/v1/" + self.vocab
+        r = requests.get(url)
+
+        if not r.status_code == 200:
+            return False
+
+        res = r.json()
+        if not res['type'] and res['type'][0]['prefLabel'] == "Thesaurus":
+            return False
+
+        return True
