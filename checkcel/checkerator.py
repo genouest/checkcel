@@ -1,6 +1,6 @@
 from openpyxl import Workbook
 
-from checkcel.validators import OntologyValidator, SetValidator, LinkedSetValidator
+from checkcel.validators import OntologyValidator, SetValidator, LinkedSetValidator, VocabulaireOuvertValidator
 from openpyxl.utils import get_column_letter
 
 from checkcel.checkplate import Checkplate
@@ -31,7 +31,7 @@ class Checkerator(Checkplate):
             readme_sheet.cell(column=1, row=current_readme_row, value=validator.describe(column_name))
             current_readme_row += 1
             data_sheet.cell(column=current_data_column, row=1, value=column_name)
-            if isinstance(validator, OntologyValidator):
+            if isinstance(validator, OntologyValidator) or isinstance(validator, VocabulaireOuvertValidator):
                 if not ontology_sheet:
                     ontology_sheet = wb.create_sheet(title="Ontologies")
                 data_validation = validator.generate(get_column_letter(current_data_column), get_column_letter(current_ontology_column), ontology_sheet)

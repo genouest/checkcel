@@ -11,12 +11,14 @@ from dateutil import parser
 from collections import defaultdict
 
 from checkcel.exceptions import ValidationException, BadValidatorException
+from checkcel import logs
 
 
 class Validator(object):
     """ Generic Validator class """
 
     def __init__(self, empty_ok=None, ignore_case=None, ignore_space=None):
+        self.logger = logs.logger
         self.invalid_dict = defaultdict(set)
         self.fail_count = 0
         self.empty_ok = empty_ok
@@ -406,7 +408,7 @@ class OntologyValidator(Validator):
         self.root_term = root_term
         self.root_term_iri = ""
 
-        is_ontology, self.root_term_iri = _validate_ontology(ontology, self.root_term)
+        is_ontology, self.root_term_iri = self._validate_ontology()
         if not is_ontology:
             raise BadValidatorException("'{}' is not a valid ontology".format(self.ontology))
         if self.root_term and not self.root_term_iri:
@@ -421,7 +423,7 @@ class OntologyValidator(Validator):
             raise ValidationException("{} is not an ontological term".format(field))
 
         if field not in self.validated_terms:
-            ontological_term = _validate_ontological_term(field, self.ontology, self.root_term_iri)
+            ontological_term = self._validate_ontological_term(field)
             if not ontological_term:
                 self.invalid_dict["invalid_set"].add(field)
                 self.invalid_dict["invalid_rows"].add(row_number)
@@ -433,7 +435,7 @@ class OntologyValidator(Validator):
         return self.invalid_dict
 
     def generate(self, column, additional_column, additional_worksheet):
-        terms = _get_ontological_terms(self.ontology, root_term_iri=self.root_term_iri)
+        terms = self._get_ontological_terms(self.ontology, root_term_iri=self.root_term_iri)
         cell = additional_worksheet.cell(column=column_index_from_string(additional_column), row=1, value=self.ontology)
         cell.font = Font(color="FF0000", bold=True)
         row = 2
@@ -455,6 +457,59 @@ class OntologyValidator(Validator):
         if not self.empty_ok:
             text += " (required)"
         return text
+
+    def _validate_ontological_term(self, term, return_uri=False):
+        base_path = "http://www.ebi.ac.uk/ols/api/search"
+        body = {
+            "q": term,
+            "ontology": self.ontology.lower(),
+            "type": "class",
+            "exact": True,
+            "queryFields": ["label", "synonym"]
+        }
+        if self.root_term_iri:
+            body["childrenOf"] = self.root_term_iri
+        r = requests.get(base_path, params=body)
+        res = r.json()
+        if not res["response"]["numFound"] == 1:
+            return False
+        if return_uri:
+            return res["response"]["docs"][0]["iri"]
+        return True
+
+    def _get_ontological_terms(self):
+        size = 100
+        terms = set()
+        if self.root_term_iri:
+            url = "http://www.ebi.ac.uk/ols/api/ontologies/{}/terms/{}/descendants?size={}".format(self.ontology, quote_plus(quote_plus(self.root_term_iri)), size)
+        else:
+            url = "http://www.ebi.ac.uk/ols/api/ontologies/{}/terms?size={}".format(self.ontology, size)
+
+        r = requests.get(url)
+        res = r.json()
+        for term in res["_embedded"]["terms"]:
+            terms.add(term["label"])
+        while "next" in res["_links"]:
+            url = res["_links"]["next"]["href"]
+            r = requests.get(url)
+            res = r.json()
+            for term in res["_embedded"]["terms"]:
+                terms.add(term["label"])
+
+        return terms
+
+    def _validate_ontology(self):
+        root_term_iri = ""
+        if not self.ontology:
+            return False
+        base_path = "http://www.ebi.ac.uk/ols/api"
+        sub_path = "/ontologies/{}".format(self.ontology.lower())
+        r = requests.get(base_path + sub_path)
+        if not r.status_code == 200:
+            return False, root_term_iri
+        if self.root_term:
+            root_term_iri = self._validate_ontological_term(return_uri=True)
+        return True, root_term_iri
 
 
 class UniqueValidator(Validator):
@@ -514,57 +569,131 @@ class UniqueValidator(Validator):
         return text
 
 
-def _validate_ontology(ontology, root_term=""):
-    root_term_iri = ""
-    if not ontology:
-        return False
-    base_path = "http://www.ebi.ac.uk/ols/api"
-    sub_path = "/ontologies/{}".format(ontology.lower())
-    r = requests.get(base_path + sub_path)
-    if not r.status_code == 200:
-        return False, root_term_iri
-    if root_term:
-        root_term_iri = _validate_ontological_term(root_term, ontology, return_uri=True)
-    return True, root_term_iri
+class VocabulaireOuvertValidator(Validator):
+    """ Validates that a term is part of the INRAE thesaurus """
 
+    def __init__(self, root_term="", lang="en", labellang="en", vocab="thesaurus-inrae", **kwargs):
+        super(VocabulaireOuvertValidator, self).__init__(**kwargs)
+        self.validated_terms = set()
+        self.root_term = root_term
+        self.root_term_iri = ""
+        self.lang = lang
+        self.labellang = labellang if labellang else self.lang
+        self.vocab = vocab
 
-def _validate_ontological_term(term, ontology, root_term_iri="", return_uri=False):
-    base_path = "http://www.ebi.ac.uk/ols/api/search"
-    body = {
-        "q": term,
-        "ontology": ontology.lower(),
-        "type": "class",
-        "exact": True,
-        "queryFields": ["label", "synonym"]
-    }
-    if root_term_iri:
-        body["childrenOf"] = root_term_iri
-    r = requests.get(base_path, params=body)
-    res = r.json()
-    if not res["response"]["numFound"] == 1:
-        return False
-    if return_uri:
-        return res["response"]["docs"][0]["iri"]
-    return True
+        if self.vocab:
+            # Check if vocab exist here
+            if not self._validate_vo_vocab():
+                raise BadValidatorException("'{}' is not a valid vocabulary".format(self.ontology))
 
+        if self.root_term:
+            exists, self.root_term_iri = self._validate_vo_term(self.root_term, return_uri=True)
+            if not exists:
+                raise BadValidatorException("'{}' is not a valid root term. Make sure it is a concept, and not a microthesaurus or group".format(self.root_term))
 
-def _get_ontological_terms(ontology, root_term_iri=""):
-    size = 100
-    terms = set()
-    if root_term_iri:
-        url = "http://www.ebi.ac.uk/ols/api/ontologies/{}/terms/{}/descendants?size={}".format(ontology, quote_plus(quote_plus(root_term_iri)), size)
-    else:
-        url = "http://www.ebi.ac.uk/ols/api/ontologies/{}/terms?size={}".format(ontology, size)
+    def validate(self, field, row_number, row={}):
+        if field == "" and self.empty_ok:
+            return
 
-    r = requests.get(url)
-    res = r.json()
-    for term in res["_embedded"]["terms"]:
-        terms.add(term["label"])
-    while "next" in res["_links"]:
-        url = res["_links"]["next"]["href"]
-        r = requests.get(url)
+        if field in self.invalid_dict["invalid_set"]:
+            self.invalid_dict["invalid_rows"].add(row_number)
+            raise ValidationException("{} is not an ontological term".format(field))
+
+        if field not in self.validated_terms:
+            ontological_term, _ = self._validate_vo_term(field)
+            if not ontological_term:
+                self.invalid_dict["invalid_set"].add(field)
+                self.invalid_dict["invalid_rows"].add(row_number)
+                raise ValidationException("{} is not an ontological term".format(field))
+            self.validated_terms.add(field)
+
+    @property
+    def bad(self):
+        return self.invalid_dict
+
+    def generate(self, column, additional_column, additional_worksheet):
+        # No point in loading 15000 terms
+        # No easy way to do it anyway
+        if not self.root_term_iri:
+            self.logger.warning(
+                "Warning: no root term used. No validation will be generated"
+            )
+            return None
+
+        terms = self._get_vo_terms()
+
+        if not terms:
+            self.logger.warning(
+                "Warning: 0 descendants found for root term {}. It might not be a concept".format(self.root_term)
+            )
+            return None
+
+        cell = additional_worksheet.cell(column=column_index_from_string(additional_column), row=1, value=self.vocab)
+        cell.font = Font(color="FF0000", bold=True)
+        row = 2
+        for term in terms:
+            additional_worksheet.cell(column=column_index_from_string(additional_column), row=row, value=term)
+            row += 1
+
+        params = {"type": "list"}
+        params["formula1"] = "{}!${}$2:${}${}".format(quote_sheetname(additional_worksheet.title), additional_column, additional_column, row - 1)
+        dv = DataValidation(**params)
+        dv.error = 'Value must be from Vocabulaires ouverts'
+        dv.add("{}2:{}1048576".format(column, column))
+        return dv
+
+    def describe(self, column_name):
+        text = "{} : Ontological term from Vocabulaires ouverts.".format(column_name)
+        if self.root_term:
+            text += " Root term is : {}".format(self.root_term)
+        if not self.empty_ok:
+            text += " (required)"
+        return text
+
+    def _validate_vo_term(self, field, return_uri=False):
+        params = {"query": field, "unique": True, "type": "skos:Concept"}
+        if self.root_term_iri:
+            params["parent"] = self.root_term_iri
+        if self.lang:
+            params["lang"] = self.lang
+        if self.labellang:
+            params["labellang"] = self.labellang
+        if self.vocab:
+            params["vocab"] = self.vocab
+
+        url = "https://consultation.vocabulaires-ouverts.inrae.fr/rest/v1/search"
+
+        r = requests.get(url, params=params)
         res = r.json()
-        for term in res["_embedded"]["terms"]:
-            terms.add(term["label"])
+        # Might be a better way. Check prefLabel?
+        if not len(res["results"]) == 1:
+            return False, ""
 
-    return terms
+        if return_uri:
+            return True, res["results"][0]['uri']
+        return True, ""
+
+    def _get_vo_terms(self):
+        url = "https://consultation.vocabulaires-ouverts.inrae.fr/rest/v1/{}/narrowerTransitive".format(self.vocab)
+        params = {"uri": self.root_term_iri}
+
+        if self.lang:
+            params['lang'] = self.lang
+
+        r = requests.get(url, params=params)
+        res = r.json()
+
+        return sorted([term['prefLabel'] for term in res['narrowerTransitive'].values() if term.get('prefLabel')])
+
+    def _validate_vo_vocab(self):
+        url = "https://consultation.vocabulaires-ouverts.inrae.fr/rest/v1/" + self.vocab
+        r = requests.get(url)
+
+        if not r.status_code == 200:
+            return False
+
+        res = r.json()
+        if not res['type'] and res['type'][0]['prefLabel'] == "Thesaurus":
+            return False
+
+        return True
