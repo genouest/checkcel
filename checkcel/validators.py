@@ -1,5 +1,6 @@
 from email_validator import validate_email, EmailNotValidError
 import requests
+import re
 
 from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.utils import quote_sheetname, column_index_from_string
@@ -552,7 +553,7 @@ class UniqueValidator(Validator):
     def bad(self):
         return self.invalid_dict
 
-    def generate(self, column, ontology_column=None):
+    def generate(self, column):
         params = {"type": "custom"}
         params["formula1"] = '=COUNTIF(${}:${},{}2)<2'.format(column, column, column)
         dv = DataValidation(**params)
@@ -697,3 +698,111 @@ class VocabulaireOuvertValidator(Validator):
             return False
 
         return True
+
+
+class RegexValidator(Validator):
+    """ Validates that a term match a regex"""
+
+    def __init__(self, regex, excel_formula="", **kwargs):
+        super(VocabulaireOuvertValidator, self).__init__(**kwargs)
+        self.regex = regex
+        self.excel_formula = excel_formula
+        try:
+            re.compile(regex)
+        except re.error:
+            raise BadValidatorException("'{}' is not a valid regular expression".format(self.regex))
+
+    def validate(self, field, row_number, row={}):
+        if field == "" and self.empty_ok:
+            return
+
+        matches = re.findall(self.regex, field)
+        if not len(matches) == 1:
+            self.invalid_dict["invalid_set"].add(field)
+            self.invalid_dict["invalid_rows"].add(row_number)
+            raise ValidationException("{} does not match regex {}".format(field, self.regex))
+
+    @property
+    def bad(self):
+        return self.invalid_dict
+
+    def generate(self, column):
+        # Difficult to use regex in Excel without a VBA macro
+        if not self.excel_formula:
+            self.logger.warning(
+                "Warning: RegexValidator does not generate a validated column"
+            )
+            return None
+
+        params = {"type": "custom"}
+        params["formula1"] = self.excel_formula.replace("{CNAME}", column)
+        dv = DataValidation(**params)
+        dv.error = 'Value must match validation'
+        dv.add("{}2:{}1048576".format(column, column))
+        return dv
+
+    def describe(self, column_name):
+        text = "{} : Term matching the regex {}.".format(column_name, self.regex)
+        if not self.empty_ok:
+            text += " (required)"
+        return text
+
+
+class GPSValidator(Validator):
+    """ Validates that a term match a regex"""
+
+    def __init__(self, format="DD", only_long=False, only_lat=False, **kwargs):
+        self.format = format
+
+        if format not in ['DD', 'DMS']:
+            raise BadValidatorException("Error: Format must be in 'DD' or 'DMS' format")
+
+        if only_long and only_lat:
+            raise BadValidatorException("Error: cannot set both only_long and only_lat")
+
+        self.only_long = only_long
+        self.only_lat = only_lat
+
+        super(VocabulaireOuvertValidator, self).__init__(**kwargs)
+
+    def validate(self, field, row_number, row={}):
+        if field == "" and self.empty_ok:
+            return
+
+        if self.format == "DD":
+            regex_lat = r"[-+]?((90(\.0+)?)|([1-8]?\d(\.\d+)?))[NSns]?"
+            regex_long = r"[-+]?((180(\.0+)?)|([1-8]?\d(\.\d+)?))[wWeE]?"
+
+        else:
+            regex_lat = r"^((90[°|\s]\s*)(0{1,2}['|\s]\s*)(0{1,2}([.|,]0{1,20})?[\"|\s]\s*)|(([1-8]\d|\d)[°|\s]\s*)(([0-5]\d|\d)['|\s]\s*)(([0-5]\d|\d)([.|,]\d{1,20})?[\"|\s]\s*))[NSns]"
+            regex_long = r"^((180[°|\s]\s*)(0{1,2}['|\s]\s*)(0{1,2}([.|,]0{1,20})?[\"|\s]\s*)|((1[0-7]\d|\d\d|\d)[°|\s]\s*)(([0-5]\d|\d)['|\s]\s*)(([0-5]\d|\d)([.|,]\d{1,20})?[\"|\s]\s*))[EWew]"
+
+        if self.only_long:
+            regex = regex_long
+        elif self.only_lat:
+            regex = regex_lat
+        else:
+            regex = regex_lat + r"[,\s]?\s?" + regex_long
+
+        matches = re.findall(regex, field)
+        if not len(matches) == 1:
+            self.invalid_dict["invalid_set"].add(field)
+            self.invalid_dict["invalid_rows"].add(row_number)
+            raise ValidationException("{} is not a valid GPS coordinate")
+
+    @property
+    def bad(self):
+        return self.invalid_dict
+
+    def generate(self, column):
+        # Difficult to use regex in Excel without a VBA macro
+        self.logger.warning(
+            "Warning: GPSValidator does not generate a validated column"
+        )
+        return None
+
+    def describe(self, column_name):
+        text = "{} : GPS coordinate".format(column_name)
+        if not self.empty_ok:
+            text += " (required)"
+        return text
