@@ -774,15 +774,15 @@ class GPSValidator(Validator):
             regex_long = r"[-+]?((180(\.0+)?)|([1-8]?\d(\.\d+)?))[wWeE]?"
 
         else:
-            regex_lat = r"^((90[°|\s]\s*)(0{1,2}['|\s]\s*)(0{1,2}([.|,]0{1,20})?[\"|\s]\s*)|(([1-8]\d|\d)[°|\s]\s*)(([0-5]\d|\d)['|\s]\s*)(([0-5]\d|\d)([.|,]\d{1,20})?[\"|\s]\s*))[NSns]"
-            regex_long = r"^((180[°|\s]\s*)(0{1,2}['|\s]\s*)(0{1,2}([.|,]0{1,20})?[\"|\s]\s*)|((1[0-7]\d|\d\d|\d)[°|\s]\s*)(([0-5]\d|\d)['|\s]\s*)(([0-5]\d|\d)([.|,]\d{1,20})?[\"|\s]\s*))[EWew]"
+            regex_lat = r"((90[°|\s]\s*)(0{1,2}['|\s]\s*)(0{1,2}([.|,]0{1,20})?[\"|\s]\s*)|(([1-8]\d|\d)[°|\s]\s*)(([0-5]\d|\d)['|\s]\s*)(([0-5]\d|\d)([.|,]\d{1,20})?[\"|\s]\s*))[NSns]"
+            regex_long = r"((180[°|\s]\s*)(0{1,2}['|\s]\s*)(0{1,2}([.|,]0{1,20})?[\"|\s]\s*)|((1[0-7]\d|\d\d|\d)[°|\s]\s*)(([0-5]\d|\d)['|\s]\s*)(([0-5]\d|\d)([.|,]\d{1,20})?[\"|\s]\s*))[EWew]"
 
         if self.only_long:
-            regex = regex_long
+            regex = r"^{}$".format(regex_long)
         elif self.only_lat:
-            regex = regex_lat
+            regex = r"^{}$".format(regex_lat)
         else:
-            regex = regex_lat + r"[,\s]?\s?" + regex_long
+            regex = r"^{}[,\s]?\s?{}$".format(regex_lat, regex_long)
 
         matches = re.findall(regex, field)
         if not len(matches) == 1:
