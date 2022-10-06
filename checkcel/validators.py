@@ -728,7 +728,7 @@ class RegexValidator(Validator):
     """ Validates that a term match a regex"""
 
     def __init__(self, regex, excel_formula="", **kwargs):
-        super(VocabulaireOuvertValidator, self).__init__(**kwargs)
+        super(RegexValidator, self).__init__(**kwargs)
         self.regex = regex
         self.excel_formula = excel_formula
         try:
@@ -779,6 +779,7 @@ class GPSValidator(Validator):
     """ Validates that a term match a regex"""
 
     def __init__(self, format="DD", only_long=False, only_lat=False, **kwargs):
+        super(GPSValidator, self).__init__(**kwargs)
         self.format = format
 
         if format not in ['DD', 'DMS']:
@@ -789,8 +790,6 @@ class GPSValidator(Validator):
 
         self.only_long = only_long
         self.only_lat = only_lat
-
-        super(VocabulaireOuvertValidator, self).__init__(**kwargs)
 
     def validate(self, field, row_number, row={}):
         if self.ignore_space:
