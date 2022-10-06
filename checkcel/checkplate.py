@@ -48,7 +48,7 @@ class Checkplate(object):
                 "Could not find a subclass of Checkplate in the provided file."
             )
             return exits.UNAVAILABLE
-        self.metadata = deepcopy(custom_class.metadata)
+        self.metadata = getattr(custom_class, 'metadata', [])
         self.validators = deepcopy(custom_class.validators)
         self.empty_ok = getattr(custom_class, 'empty_ok', False)
         for key, validator in self.validators.items():
