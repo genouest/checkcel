@@ -104,6 +104,9 @@ class CastValidator(Validator):
         self.max = max
 
     def validate(self, field, row_number, row={}):
+        if self.ignore_space:
+            field = field.strip()
+
         try:
             if field or not self.empty_ok:
                 field = self.cast(field)
@@ -253,6 +256,11 @@ class LinkedSetValidator(Validator):
         self.column_check = True
 
     def validate(self, field, row_number, row):
+        if self.ignore_case:
+            field = field.lower()
+        if self.ignore_space:
+            field = field.strip()
+
         if not self.column_check:
             self._precheck_unique_with(row)
         if field == "" and self.empty_ok:
@@ -311,6 +319,9 @@ class DateValidator(Validator):
         self.day_first = day_first
 
     def validate(self, field, row_number, row={}):
+        if self.ignore_space:
+            field = field.strip()
+
         try:
             if field or not self.empty_ok:
                 # Pandas auto convert fields into dates (ignoring the parse_dates=False)
@@ -343,6 +354,8 @@ class TimeValidator(Validator):
         super(TimeValidator, self).__init__(**kwargs)
 
     def validate(self, field, row_number, row={}):
+        if self.ignore_space:
+            field = field.strip()
         try:
             if field or not self.empty_ok:
                 # Pandas auto convert fields into dates (ignoring the parse_dates=False)
@@ -375,6 +388,8 @@ class EmailValidator(Validator):
         super(EmailValidator, self).__init__(**kwargs)
 
     def validate(self, field, row_number, row={}):
+        if self.ignore_space:
+            field = field.strip()
         if field or not self.empty_ok:
             try:
                 validate_email(field)
@@ -416,6 +431,9 @@ class OntologyValidator(Validator):
             raise BadValidatorException("'{}' is not a valid root term for ontology {}".format(self.root_term, self.ontology))
 
     def validate(self, field, row_number, row={}):
+        if self.ignore_space:
+            field = field.strip()
+
         if field == "" and self.empty_ok:
             return
 
@@ -529,6 +547,9 @@ class UniqueValidator(Validator):
         self.unique_check = True
 
     def validate(self, field, row_number, row={}):
+        if self.ignore_space:
+            field = field.strip()
+
         if field == "" and self.empty_ok:
             return
         if self.unique_with and not self.unique_check:
@@ -593,6 +614,9 @@ class VocabulaireOuvertValidator(Validator):
                 raise BadValidatorException("'{}' is not a valid root term. Make sure it is a concept, and not a microthesaurus or group".format(self.root_term))
 
     def validate(self, field, row_number, row={}):
+        if self.ignore_space:
+            field = field.strip()
+
         if field == "" and self.empty_ok:
             return
 
@@ -713,6 +737,9 @@ class RegexValidator(Validator):
             raise BadValidatorException("'{}' is not a valid regular expression".format(self.regex))
 
     def validate(self, field, row_number, row={}):
+        if self.ignore_space:
+            field = field.strip()
+
         if field == "" and self.empty_ok:
             return
 
@@ -766,6 +793,9 @@ class GPSValidator(Validator):
         super(VocabulaireOuvertValidator, self).__init__(**kwargs)
 
     def validate(self, field, row_number, row={}):
+        if self.ignore_space:
+            field = field.strip()
+
         if field == "" and self.empty_ok:
             return
 
