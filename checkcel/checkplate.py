@@ -15,7 +15,8 @@ from copy import deepcopy
 
 class Checkplate(object):
     """ Base class for templates """
-    def __init__(self, validators={}, empty_ok=False, ignore_case=False, ignore_space=False):
+    def __init__(self, validators={}, empty_ok=False, ignore_case=False, ignore_space=False, metadata=[]):
+        self.metadata = metadata
         self.logger = logs.logger
         self.validators = validators or getattr(self, "validators", {})
         # Will be overriden by validators config
@@ -47,6 +48,7 @@ class Checkplate(object):
                 "Could not find a subclass of Checkplate in the provided file."
             )
             return exits.UNAVAILABLE
+        self.metadata = deepcopy(custom_class.metadata)
         self.validators = deepcopy(custom_class.validators)
         self.empty_ok = getattr(custom_class, 'empty_ok', False)
         for key, validator in self.validators.items():
@@ -108,6 +110,7 @@ class Checkplate(object):
         self.empty_ok = data.get("empty_ok", False)
         validators_list = []
         self.validators = {}
+        self.metadata = data.get('metadata', [])
 
         for validator in data['validators']:
             if 'type' not in validator or 'name' not in validator:

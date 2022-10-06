@@ -21,8 +21,14 @@ class Checkerator(Checkplate):
         current_ontology_column = 1
         current_set_column = 1
         current_readme_row = 1
-        readme_sheet = wb.active
-        readme_sheet.title = "README"
+        if self.metadata:
+            metadata_sheet = wb.active
+            metadata_sheet.title = "Metadata"
+            self.write_metadata(metadata_sheet)
+            readme_sheet = wb.create_sheet(title="README")
+        else:
+            readme_sheet = wb.active
+            readme_sheet.title = "README"
         data_sheet = wb.create_sheet(title="Data")
         ontology_sheet = None
         set_sheet = None
@@ -65,3 +71,9 @@ class Checkerator(Checkplate):
 
     def as_text(self, value):
         return str(value) if value is not None else ""
+
+    def write_metadata(self, sheet):
+        current_col = 1
+        for meta in self.metadata:
+            sheet.cell(column=current_col, row=1, value=meta)
+            current_col += 1
