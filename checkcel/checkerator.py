@@ -1,6 +1,6 @@
 from openpyxl import Workbook
 
-from checkcel.validators import OntologyValidator, SetValidator, LinkedSetValidator, VocabulaireOuvertValidator
+from checkcel.validators import OntologyValidator, SetValidator, LinkedSetValidator, UniqueValidator, VocabulaireOuvertValidator
 from openpyxl.utils import get_column_letter
 
 from checkcel.checkplate import Checkplate
@@ -33,7 +33,9 @@ class Checkerator(Checkplate):
         ontology_sheet = None
         set_sheet = None
         set_columns = {}
+        column_dict = {}
         for column_name, validator in self.validators.items():
+            column_dict[column_name] = get_column_letter(current_data_column)
             readme_sheet.cell(column=1, row=current_readme_row, value=validator.describe(column_name))
             current_readme_row += 1
             data_sheet.cell(column=current_data_column, row=1, value=column_name)
@@ -58,6 +60,8 @@ class Checkerator(Checkplate):
                 data_validation = validator.generate(get_column_letter(current_data_column), set_columns, column_name, get_column_letter(current_set_column), set_sheet, wb)
                 current_set_column += 1
                 set_columns[column_name] = get_column_letter(current_data_column)
+            elif isinstance(validator, UniqueValidator):
+                data_validation = validator.generate(get_column_letter(current_data_column), column_dict)
             else:
                 data_validation = validator.generate(get_column_letter(current_data_column))
             if data_validation:

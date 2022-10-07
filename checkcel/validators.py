@@ -302,7 +302,7 @@ class LinkedSetValidator(Validator):
         for key, values in row_dict.items():
             new_range = DefinedName(key, attr_text='{}!${}${}:${}${}'.format(quote_sheetname(additional_worksheet.title), additional_column, values['min'], additional_column, values['max']))
             workbook.defined_names.append(new_range)
-        params["formula1"] = "=INDIRECT(${}2)".format(set_columns[self.linked_column])
+        params["formula1"] = "INDIRECT(${}2)".format(set_columns[self.linked_column])
         dv = DataValidation(**params)
         dv.add("{}2:{}1048576".format(column, column))
         return dv
@@ -454,7 +454,7 @@ class OntologyValidator(Validator):
         return self.invalid_dict
 
     def generate(self, column, additional_column, additional_worksheet):
-        terms = self._get_ontological_terms(self.ontology, root_term_iri=self.root_term_iri)
+        terms = self._get_ontological_terms()
         cell = additional_worksheet.cell(column=column_index_from_string(additional_column), row=1, value=self.ontology)
         cell.font = Font(color="FF0000", bold=True)
         row = 2
@@ -527,7 +527,7 @@ class OntologyValidator(Validator):
         if not r.status_code == 200:
             return False, root_term_iri
         if self.root_term:
-            root_term_iri = self._validate_ontological_term(return_uri=True)
+            root_term_iri = self._validate_ontological_term(self.root_term, return_uri=True)
         return True, root_term_iri
 
 
@@ -574,9 +574,16 @@ class UniqueValidator(Validator):
     def bad(self):
         return self.invalid_dict
 
-    def generate(self, column):
+    def generate(self, column, column_dict):
+        if self.unique_with and not all([val in column_dict for val in self.unique_with]):
+            raise BadValidatorException("Using unique_with, but the related column was not defined before")
+
         params = {"type": "custom"}
-        params["formula1"] = '=COUNTIF(${}:${},{}2)<2'.format(column, column, column)
+        internal_value = "${0}:${0},{0}2".format(column)
+        if self.unique_with:
+            for col in self.unique_with:
+                internal_value += ",${0}:${0},{0}2".format(column_dict[col])
+        params["formula1"] = '=COUNTIF({})<2'.format(internal_value)
         dv = DataValidation(**params)
         dv.error = 'Value must be unique'
         dv.add("{}2:{}1048576".format(column, column))

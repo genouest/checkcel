@@ -148,7 +148,8 @@ class Checkxtractor(object):
             if cell_range.title:
                 ws = self.wb[cell_range.title]
             for cell_coord in cell_range.cells:
-                value_list.append(ws[cell_coord])
+                coord= "{}{}".format(get_column_letter(cell_coord[1]), cell_coord[0])
+                value_list.append(ws[coord].value)
             self.set_values[column_name] = value_list
             return {'valid_values': value_list}
         except ValueError:
@@ -158,7 +159,10 @@ class Checkxtractor(object):
 
     def _format_validator(self, validator, options={}):
         if self.template_type in ['json', 'yml']:
-            return {'type': validator, 'options': options}
+            data = {'type': validator}
+            if options:
+                data['options'] = options
+            return data
         else:
             return "{}({})".format(validator, self._stringify_dict(options))
 
@@ -175,7 +179,7 @@ class Checkxtractor(object):
             data = self._generate_python_script(validation_dict)
             with open(output_file, 'w') as f:
                 f.write(data)
-        elif self.template_type in ['json', 'yml']:
+        elif self.template_type in ['json', 'yml', 'yaml']:
             data = self._generate_template_script(validation_dict)
             with open(output_file, 'w') as f:
                 if self.template_type == "json":

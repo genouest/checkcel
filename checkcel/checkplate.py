@@ -51,6 +51,8 @@ class Checkplate(object):
         self.metadata = getattr(custom_class, 'metadata', [])
         self.validators = deepcopy(custom_class.validators)
         self.empty_ok = getattr(custom_class, 'empty_ok', False)
+        self.ignore_case = getattr(custom_class, 'ignore_case', False)
+        self.ignore_space = getattr(custom_class, 'ignore_space', False)
         for key, validator in self.validators.items():
             validator._set_attributes(self.empty_ok, self.ignore_case, self.ignore_space)
         return self
@@ -108,6 +110,8 @@ class Checkplate(object):
             return exits.UNAVAILABLE
 
         self.empty_ok = data.get("empty_ok", False)
+        self.ignore_case = data.get('ignore_case', False)
+        self.ignore_space = data.get('ignore_space', False)
         validators_list = []
         self.validators = {}
         self.metadata = data.get('metadata', [])

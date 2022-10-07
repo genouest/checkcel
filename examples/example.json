@@ -1,0 +1,66 @@
+{
+    "empty_ok": true,
+    "ignore_case": false,
+    "ignore_space": false,
+    "metadata": ["Submitter", "Institute", "Version"],
+    "validators": [
+        {
+            "type": "NoValidator",
+            "name": "Name"
+        },
+        {
+            "type": "DateValidator",
+            "name": "Sampling date"
+        },
+        {
+            "type": "NoValidator",
+            "name": "Collector"
+        },
+        {
+            "type": "IntValidator",
+            "options": {
+                "min": 0
+            },
+            "name": "Altitude"
+        },
+        {
+            "type": "SetValidator",
+            "options": {
+                "valid_values": [
+                    "France",
+                    "Italy"
+                ]
+            },
+            "name": "Country"
+        },
+        {
+            "type": "LinkedSetValidator",
+            "options": {
+                "linked_column": "Country",
+                "valid_values": {
+                    "France": [
+                        "Paris",
+                        "Rennes"
+                    ],
+                    "Italy": [
+                        "Milan",
+                        "Roma"
+                    ]
+                }
+            },
+            "name": "City"
+        },
+        {
+            "type": "GPSValidator",
+            "name": "GPS"
+        },
+        {
+            "type": "OntologyValidator",
+            "options": {
+                "ontology": "ncbitaxon",
+                "root_term": "brassica"
+            },
+            "name": "Brassica type"
+        }
+    ]
+}
