@@ -1,0 +1,42 @@
+empty_ok: true
+ignore_case: false
+ignore_space: false
+metadata:
+- Submitter
+- Institute
+- Version
+validators:
+- name: Name
+  type: NoValidator
+- name: Sampling date
+  type: DateValidator
+- name: Collector
+  type: NoValidator
+- name: Altitude
+  options:
+    min: 0
+  type: IntValidator
+- name: Country
+  options:
+    valid_values:
+    - France
+    - Italy
+  type: SetValidator
+- name: City
+  options:
+    linked_column: Country
+    valid_values:
+      France:
+      - Paris
+      - Rennes
+      Italy:
+      - Milan
+      - Roma
+  type: LinkedSetValidator
+- name: GPS
+  type: GPSValidator
+- name: Brassica type
+  options:
+    ontology: ncbitaxon
+    root_term: brassica 
+  type: SetValidator

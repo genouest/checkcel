@@ -16,7 +16,6 @@ def parse_args():
 
     # Initialize
     parser = ArgumentParser(description="Test description")
-    # Specify the vladfile to be something other than vladfile.py
 
     subparsers = parser.add_subparsers(help='sub-command help', dest="subcommand")
 
@@ -69,7 +68,7 @@ def parse_args():
         "-t",
         "--template",
         dest="template_type",
-        choices=['python', 'json', 'yml'],
+        choices=['python', 'json', 'yml', 'yaml'],
         help="Template type (python, json, or yml)",
         default="python"
     )
@@ -90,7 +89,7 @@ def parse_args():
         "-t",
         "--template",
         dest="template_type",
-        choices=['python', 'json', 'yml'],
+        choices=['python', 'json', 'yml', 'yaml'],
         help="Template type (python, json, or yml)",
         default="python"
     )
@@ -112,7 +111,7 @@ def parse_args():
         "--sheet",
         dest="sheet",
         default=0,
-        help="Sheet to extract",
+        help="Sheet to extract. Default to 0 for first sheet",
     )
 
     parser_extract.add_argument(
@@ -127,7 +126,7 @@ def parse_args():
         "-t",
         "--template",
         dest="template_type",
-        choices=['python', 'json', 'yml'],
+        choices=['python', 'json', 'yml', 'yaml'],
         help="Template type (python, json, or yml)",
         default="python"
     )
@@ -163,7 +162,7 @@ def main():
             passed.load_from_python_file(arguments.template)
         elif arguments.template_type == "json":
             passed.load_from_json_file(arguments.template)
-        elif arguments.template_type == "yml":
+        elif arguments.template_type in ["yml", "yaml"]:
             passed.load_from_yaml_file(arguments.template)
 
         if not isinstance(passed, Checkplate):
@@ -178,7 +177,7 @@ def main():
             passed.load_from_python_file(arguments.template)
         elif arguments.template_type == "json":
             passed.load_from_json_file(arguments.template)
-        elif arguments.template_type == "yml":
+        elif arguments.template_type in ["yml", "yaml"]:
             passed.load_from_yaml_file(arguments.template)
 
         if not isinstance(passed, Checkplate):

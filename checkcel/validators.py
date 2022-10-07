@@ -1,5 +1,6 @@
 from email_validator import validate_email, EmailNotValidError
 import requests
+import re
 
 from openpyxl.worksheet.datavalidation import DataValidation
 from openpyxl.utils import quote_sheetname, column_index_from_string
@@ -103,6 +104,9 @@ class CastValidator(Validator):
         self.max = max
 
     def validate(self, field, row_number, row={}):
+        if self.ignore_space:
+            field = field.strip()
+
         try:
             if field or not self.empty_ok:
                 field = self.cast(field)
@@ -252,6 +256,11 @@ class LinkedSetValidator(Validator):
         self.column_check = True
 
     def validate(self, field, row_number, row):
+        if self.ignore_case:
+            field = field.lower()
+        if self.ignore_space:
+            field = field.strip()
+
         if not self.column_check:
             self._precheck_unique_with(row)
         if field == "" and self.empty_ok:
@@ -293,7 +302,7 @@ class LinkedSetValidator(Validator):
         for key, values in row_dict.items():
             new_range = DefinedName(key, attr_text='{}!${}${}:${}${}'.format(quote_sheetname(additional_worksheet.title), additional_column, values['min'], additional_column, values['max']))
             workbook.defined_names.append(new_range)
-        params["formula1"] = "=INDIRECT(${}2)".format(set_columns[self.linked_column])
+        params["formula1"] = "INDIRECT(${}2)".format(set_columns[self.linked_column])
         dv = DataValidation(**params)
         dv.add("{}2:{}1048576".format(column, column))
         return dv
@@ -310,6 +319,9 @@ class DateValidator(Validator):
         self.day_first = day_first
 
     def validate(self, field, row_number, row={}):
+        if self.ignore_space:
+            field = field.strip()
+
         try:
             if field or not self.empty_ok:
                 # Pandas auto convert fields into dates (ignoring the parse_dates=False)
@@ -342,6 +354,8 @@ class TimeValidator(Validator):
         super(TimeValidator, self).__init__(**kwargs)
 
     def validate(self, field, row_number, row={}):
+        if self.ignore_space:
+            field = field.strip()
         try:
             if field or not self.empty_ok:
                 # Pandas auto convert fields into dates (ignoring the parse_dates=False)
@@ -374,6 +388,8 @@ class EmailValidator(Validator):
         super(EmailValidator, self).__init__(**kwargs)
 
     def validate(self, field, row_number, row={}):
+        if self.ignore_space:
+            field = field.strip()
         if field or not self.empty_ok:
             try:
                 validate_email(field)
@@ -415,6 +431,9 @@ class OntologyValidator(Validator):
             raise BadValidatorException("'{}' is not a valid root term for ontology {}".format(self.root_term, self.ontology))
 
     def validate(self, field, row_number, row={}):
+        if self.ignore_space:
+            field = field.strip()
+
         if field == "" and self.empty_ok:
             return
 
@@ -435,7 +454,7 @@ class OntologyValidator(Validator):
         return self.invalid_dict
 
     def generate(self, column, additional_column, additional_worksheet):
-        terms = self._get_ontological_terms(self.ontology, root_term_iri=self.root_term_iri)
+        terms = self._get_ontological_terms()
         cell = additional_worksheet.cell(column=column_index_from_string(additional_column), row=1, value=self.ontology)
         cell.font = Font(color="FF0000", bold=True)
         row = 2
@@ -508,7 +527,7 @@ class OntologyValidator(Validator):
         if not r.status_code == 200:
             return False, root_term_iri
         if self.root_term:
-            root_term_iri = self._validate_ontological_term(return_uri=True)
+            root_term_iri = self._validate_ontological_term(self.root_term, return_uri=True)
         return True, root_term_iri
 
 
@@ -528,6 +547,9 @@ class UniqueValidator(Validator):
         self.unique_check = True
 
     def validate(self, field, row_number, row={}):
+        if self.ignore_space:
+            field = field.strip()
+
         if field == "" and self.empty_ok:
             return
         if self.unique_with and not self.unique_check:
@@ -552,9 +574,16 @@ class UniqueValidator(Validator):
     def bad(self):
         return self.invalid_dict
 
-    def generate(self, column, ontology_column=None):
+    def generate(self, column, column_dict):
+        if self.unique_with and not all([val in column_dict for val in self.unique_with]):
+            raise BadValidatorException("Using unique_with, but the related column was not defined before")
+
         params = {"type": "custom"}
-        params["formula1"] = '=COUNTIF(${}:${},{}2)<2'.format(column, column, column)
+        internal_value = "${0}:${0},{0}2".format(column)
+        if self.unique_with:
+            for col in self.unique_with:
+                internal_value += ",${0}:${0},{0}2".format(column_dict[col])
+        params["formula1"] = '=COUNTIF({})<2'.format(internal_value)
         dv = DataValidation(**params)
         dv.error = 'Value must be unique'
         dv.add("{}2:{}1048576".format(column, column))
@@ -592,6 +621,9 @@ class VocabulaireOuvertValidator(Validator):
                 raise BadValidatorException("'{}' is not a valid root term. Make sure it is a concept, and not a microthesaurus or group".format(self.root_term))
 
     def validate(self, field, row_number, row={}):
+        if self.ignore_space:
+            field = field.strip()
+
         if field == "" and self.empty_ok:
             return
 
@@ -697,3 +729,116 @@ class VocabulaireOuvertValidator(Validator):
             return False
 
         return True
+
+
+class RegexValidator(Validator):
+    """ Validates that a term match a regex"""
+
+    def __init__(self, regex, excel_formula="", **kwargs):
+        super(RegexValidator, self).__init__(**kwargs)
+        self.regex = regex
+        self.excel_formula = excel_formula
+        try:
+            re.compile(regex)
+        except re.error:
+            raise BadValidatorException("'{}' is not a valid regular expression".format(self.regex))
+
+    def validate(self, field, row_number, row={}):
+        if self.ignore_space:
+            field = field.strip()
+
+        if field == "" and self.empty_ok:
+            return
+
+        matches = re.findall(self.regex, field)
+        if not len(matches) == 1:
+            self.invalid_dict["invalid_set"].add(field)
+            self.invalid_dict["invalid_rows"].add(row_number)
+            raise ValidationException("{} does not match regex {}".format(field, self.regex))
+
+    @property
+    def bad(self):
+        return self.invalid_dict
+
+    def generate(self, column):
+        # Difficult to use regex in Excel without a VBA macro
+        if not self.excel_formula:
+            self.logger.warning(
+                "Warning: RegexValidator does not generate a validated column"
+            )
+            return None
+
+        params = {"type": "custom"}
+        params["formula1"] = self.excel_formula.replace("{CNAME}", column)
+        dv = DataValidation(**params)
+        dv.error = 'Value must match validation'
+        dv.add("{}2:{}1048576".format(column, column))
+        return dv
+
+    def describe(self, column_name):
+        text = "{} : Term matching the regex {}.".format(column_name, self.regex)
+        if not self.empty_ok:
+            text += " (required)"
+        return text
+
+
+class GPSValidator(Validator):
+    """ Validates that a term match a regex"""
+
+    def __init__(self, format="DD", only_long=False, only_lat=False, **kwargs):
+        super(GPSValidator, self).__init__(**kwargs)
+        self.format = format
+
+        if format not in ['DD', 'DMS']:
+            raise BadValidatorException("Error: Format must be in 'DD' or 'DMS' format")
+
+        if only_long and only_lat:
+            raise BadValidatorException("Error: cannot set both only_long and only_lat")
+
+        self.only_long = only_long
+        self.only_lat = only_lat
+
+    def validate(self, field, row_number, row={}):
+        if self.ignore_space:
+            field = field.strip()
+
+        if field == "" and self.empty_ok:
+            return
+
+        if self.format == "DD":
+            regex_lat = r"[-+]?((90(\.0+)?)|([1-8]?\d(\.\d+)?))[NSns]?"
+            regex_long = r"[-+]?((180(\.0+)?)|([1-8]?\d(\.\d+)?))[wWeE]?"
+
+        else:
+            regex_lat = r"((90[°|\s]\s*)(0{1,2}['|\s]\s*)(0{1,2}([.|,]0{1,20})?[\"|\s]\s*)|(([1-8]\d|\d)[°|\s]\s*)(([0-5]\d|\d)['|\s]\s*)(([0-5]\d|\d)([.|,]\d{1,20})?[\"|\s]\s*))[NSns]"
+            regex_long = r"((180[°|\s]\s*)(0{1,2}['|\s]\s*)(0{1,2}([.|,]0{1,20})?[\"|\s]\s*)|((1[0-7]\d|\d\d|\d)[°|\s]\s*)(([0-5]\d|\d)['|\s]\s*)(([0-5]\d|\d)([.|,]\d{1,20})?[\"|\s]\s*))[EWew]"
+
+        if self.only_long:
+            regex = r"^{}$".format(regex_long)
+        elif self.only_lat:
+            regex = r"^{}$".format(regex_lat)
+        else:
+            regex = r"^{}[,\s]?\s?{}$".format(regex_lat, regex_long)
+
+        matches = re.findall(regex, field)
+        if not len(matches) == 1:
+            self.invalid_dict["invalid_set"].add(field)
+            self.invalid_dict["invalid_rows"].add(row_number)
+            raise ValidationException("{} is not a valid GPS coordinate")
+
+    @property
+    def bad(self):
+        return self.invalid_dict
+
+    def generate(self, column):
+        # Difficult to use regex in Excel without a VBA macro
+        self.logger.warning(
+            "Warning: GPSValidator does not generate a validated column"
+        )
+        return None
+
+    def describe(self, column_name):
+        text = "{} : GPS coordinate".format(column_name)
+        if not self.empty_ok:
+            text += " (required)"
+        return text
