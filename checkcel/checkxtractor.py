@@ -148,7 +148,7 @@ class Checkxtractor(object):
             if cell_range.title:
                 ws = self.wb[cell_range.title]
             for cell_coord in cell_range.cells:
-                coord= "{}{}".format(get_column_letter(cell_coord[1]), cell_coord[0])
+                coord = "{}{}".format(get_column_letter(cell_coord[1]), cell_coord[0])
                 value_list.append(ws[coord].value)
             self.set_values[column_name] = value_list
             return {'valid_values': value_list}
