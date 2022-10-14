@@ -1,4 +1,4 @@
-name: Lint
+name: Lint and tests
 on: [push, pull_request]
 jobs:
   lint:
@@ -13,6 +13,19 @@ jobs:
       run: pip install flake8
     - name: Flake8
       run: flake8 checkcel --ignore=E501,W504
+
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - uses: actions/setup-python@v1
+      with:
+        python-version: 3.7
+    - name: Install pytest
+      run: pip install pytest
+    - name: Test
+      run: pytest -v tests/
 
   pypi:
     runs-on: ubuntu-latest
