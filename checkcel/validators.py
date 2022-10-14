@@ -550,10 +550,13 @@ class UniqueValidator(Validator):
         if self.ignore_space:
             field = field.strip()
 
-        if not field and not self.empty_ok:
-            raise ValidationException(
-                "Field cannot be empty"
-            )
+        if not field:
+            if self.empty_ok:
+                return
+            else:
+                raise ValidationException(
+                    "Field cannot be empty"
+                )
 
         if self.unique_with and not self.unique_check:
             self._precheck_unique_with(row)
