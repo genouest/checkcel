@@ -10,7 +10,8 @@ from checkcel.checkplate import Checkplate
 class Checkcel(Checkplate):
     def __init__(
         self,
-        source,
+        source="",
+        data=None,
         format="spreadsheet",
         delimiter=",",
         sheet=0,
@@ -22,6 +23,7 @@ class Checkcel(Checkplate):
         self.missing_validators = None
         self.missing_fields = None
         self.source = source
+        self.data = data
         self.format = format
         self.delimiter = delimiter
         self.sheet = int(sheet)
@@ -30,6 +32,9 @@ class Checkcel(Checkplate):
         self.line_count = row + 1
         self.column_set = set()
         self.ignore_missing_validators = False
+
+        if not (self.source or self.data is not None):
+            raise Exception("Need to provide either a source or the data (as a pandas dataframe)")
 
         if format not in ["spreadsheet", "tabular"]:
             raise Exception("Type must be either spreadsheet or tabular")
@@ -84,21 +89,25 @@ class Checkcel(Checkplate):
 
     def validate(self):
         self.logger.info(
-            "\nValidating {}(source={})".format(self.__class__.__name__, self.source)
+            "\nValidating {}{}".format(self.__class__.__name__, "(source={})".format(self.source) if self.source else "")
         )
 
-        if self.format == "spreadsheet":
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                df = pandas.read_excel(self.source, sheet_name=self.sheet, keep_default_na=False, skiprows=self.row)
-        else:
-            df = pandas.read_csv(self.source, sep=self.delimiter, skiprows=self.row)
+        if self.source:
+            if self.format == "spreadsheet":
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    df = pandas.read_excel(self.source, sheet_name=self.sheet, keep_default_na=False, skiprows=self.row)
+            else:
+                df = pandas.read_csv(self.source, sep=self.delimiter, skiprows=self.row)
 
-        if len(df) == 0:
-            self.logger.info(
-                "\033[1;33m" + "Source file has no data" + "\033[0m"
-            )
-            return False
+            if len(df) == 0:
+                self.logger.info(
+                    "\033[1;33m" + "Source file has no data" + "\033[0m"
+                )
+                return False
+
+        else:
+            df = self.data
 
         df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
 

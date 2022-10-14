@@ -3,3 +3,4 @@ odfpy
 pandas
 email-validator
 pyyaml
+requests

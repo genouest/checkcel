@@ -24,7 +24,7 @@ class Checkplate(object):
         self.ignore_case = ignore_case
         self.ignore_space = ignore_space
         # self.trim_values = False
-        for validator in self.validators:
+        for validator in self.validators.values():
             validator._set_attributes(self.empty_ok, self.ignore_case, self.ignore_space)
 
     def load_from_python_file(self, file_path):

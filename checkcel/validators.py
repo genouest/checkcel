@@ -550,8 +550,14 @@ class UniqueValidator(Validator):
         if self.ignore_space:
             field = field.strip()
 
-        if field == "" and self.empty_ok:
-            return
+        if not field:
+            if self.empty_ok:
+                return
+            else:
+                raise ValidationException(
+                    "Field cannot be empty"
+                )
+
         if self.unique_with and not self.unique_check:
             self._precheck_unique_with(row)
 
@@ -807,11 +813,11 @@ class GPSValidator(Validator):
 
         if self.format == "DD":
             regex_lat = r"[-+]?((90(\.0+)?)|([1-8]?\d(\.\d+)?))[NSns]?"
-            regex_long = r"[-+]?((180(\.0+)?)|([1-8]?\d(\.\d+)?))[wWeE]?"
+            regex_long = r"[-+]?((180(\.0+)?)|(((1[0-7]\d)|([1-9]?\d))(\.\d+)?))[wWeE]?"
 
         else:
-            regex_lat = r"((90[°|\s]\s*)(0{1,2}['|\s]\s*)(0{1,2}([.|,]0{1,20})?[\"|\s]\s*)|(([1-8]\d|\d)[°|\s]\s*)(([0-5]\d|\d)['|\s]\s*)(([0-5]\d|\d)([.|,]\d{1,20})?[\"|\s]\s*))[NSns]"
-            regex_long = r"((180[°|\s]\s*)(0{1,2}['|\s]\s*)(0{1,2}([.|,]0{1,20})?[\"|\s]\s*)|((1[0-7]\d|\d\d|\d)[°|\s]\s*)(([0-5]\d|\d)['|\s]\s*)(([0-5]\d|\d)([.|,]\d{1,20})?[\"|\s]\s*))[EWew]"
+            regex_lat = r"((([1-8]?\d)(°\s?|\s)([1-5]?\d|60)('\s?|\s)?([1-5]?\d(\.\d+)?|60)(\"\s?|\s)?)|(90(°\s?|\s)0('\s?|\s)0(\"\s?|\s)?))[NSns]?"
+            regex_long = r"((((1[0-7][0-9])|([0-9]{1,2}))(°\s?|\s)([1-5]?\d|60)('\s?|\s)([1-5]?\d(\.\d+)?|60)(\"\s?|\s)?)|(180(°\s?|\s)0('\s?|\s)0(\"\s?|\s)?))[EWew]?"
 
         if self.only_long:
             regex = r"^{}$".format(regex_long)
