@@ -321,16 +321,17 @@ class DateValidator(Validator):
         if before:
             try:
                 parser.parse(before).date()
-                self.before = before
             except parser.ParserError as e:
                 raise BadValidatorException(e)
 
         if after:
             try:
                 parser.parse(after).date()
-                self.after = after
             except parser.ParserError as e:
                 raise BadValidatorException(e)
+
+        self.before = before
+        self.after = after
 
     def validate(self, field, row_number, row={}):
         if self.ignore_space:
@@ -403,16 +404,17 @@ class TimeValidator(Validator):
         if before:
             try:
                 parser.parse(before).time()
-                self.before = before
             except parser.ParserError as e:
                 raise BadValidatorException(e)
 
         if after:
             try:
                 parser.parse(after).time()
-                self.after = after
             except parser.ParserError as e:
                 raise BadValidatorException(e)
+
+        self.before = before
+        self.after = after
 
     def validate(self, field, row_number, row={}):
         if self.ignore_space:
