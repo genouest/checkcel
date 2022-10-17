@@ -209,6 +209,24 @@ class TestCheckcelValidateDate():
         assert val is False
         assert len(validation.failures['my_column']) == 2
 
+    def test_invalid_before(self):
+        data = {'my_column': ['01/01/2000', '10/10/2010']}
+        validators = {'my_column': DateValidator(before="05/05/2005")}
+        df = pd.DataFrame.from_dict(data)
+        validation = Checkcel(data=df, empty_ok=False, validators=validators)
+        val = validation.validate()
+        assert val is False
+        assert len(validation.failures['my_column']) == 1
+
+    def test_invalid_after(self):
+        data = {'my_column': ['01/01/2000', '10/10/2010']}
+        validators = {'my_column': DateValidator(after="05/05/2005")}
+        df = pd.DataFrame.from_dict(data)
+        validation = Checkcel(data=df, empty_ok=False, validators=validators)
+        val = validation.validate()
+        assert val is False
+        assert len(validation.failures['my_column']) == 1
+
     def test_invalid_empty(self):
         data = {'my_column': ['01/01/1970', '']}
         validators = {'my_column': DateValidator()}
@@ -243,6 +261,24 @@ class TestCheckcelValidateTime():
         val = validation.validate()
         assert val is False
         assert len(validation.failures['my_column']) == 2
+
+    def test_invalid_before(self):
+        data = {'my_column': ['14h23', '16h30']}
+        validators = {'my_column': TimeValidator(before="15h00")}
+        df = pd.DataFrame.from_dict(data)
+        validation = Checkcel(data=df, empty_ok=False, validators=validators)
+        val = validation.validate()
+        assert val is False
+        assert len(validation.failures['my_column']) == 1
+
+    def test_invalid_after(self):
+        data = {'my_column': ['14h23', '16h30']}
+        validators = {'my_column': TimeValidator(after="15h00")}
+        df = pd.DataFrame.from_dict(data)
+        validation = Checkcel(data=df, empty_ok=False, validators=validators)
+        val = validation.validate()
+        assert val is False
+        assert len(validation.failures['my_column']) == 1
 
     def test_invalid_empty(self):
         data = {'my_column': ['13h10', '']}

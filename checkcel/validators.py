@@ -314,9 +314,23 @@ class LinkedSetValidator(Validator):
 class DateValidator(Validator):
     """ Validates that a field is a Date """
 
-    def __init__(self, day_first=True, **kwargs):
+    def __init__(self, day_first=True, before=None, after=None, **kwargs):
         super(DateValidator, self).__init__(**kwargs)
         self.day_first = day_first
+
+        if before:
+            try:
+                parser.parse(before).date()
+                self.before = before
+            except parser.ParserError as e:
+                raise BadValidatorException(e)
+
+        if after:
+            try:
+                parser.parse(after).date()
+                self.after = after
+            except parser.ParserError as e:
+                raise BadValidatorException(e)
 
     def validate(self, field, row_number, row={}):
         if self.ignore_space:
@@ -326,7 +340,17 @@ class DateValidator(Validator):
             if field or not self.empty_ok:
                 # Pandas auto convert fields into dates (ignoring the parse_dates=False)
                 field = str(field)
-                parser.parse(field, dayfirst=self.day_first).date()
+                date = parser.parse(field, dayfirst=self.day_first).date()
+
+                if self.before and not date < parser.parse(self.before, dayfirst=self.day_first).date():
+                    self.invalid_dict["invalid_set"].add(field)
+                    self.invalid_dict["invalid_rows"].add(row_number)
+                    raise ValidationException("Value {} is not before {}".format(field, self.before))
+
+                if self.after and not date > parser.parse(self.after, dayfirst=self.day_first).date():
+                    self.invalid_dict["invalid_set"].add(field)
+                    self.invalid_dict["invalid_rows"].add(row_number)
+                    raise ValidationException("Value {} is not after {}".format(field, self.after))
 
         except parser.ParserError as e:
             self.invalid_dict["invalid_set"].add(field)
@@ -339,19 +363,56 @@ class DateValidator(Validator):
 
     def generate(self, column, additional_column=None, additional_worksheet=None):
         # GreaterThanOrEqual for validity with ODS.
-        dv = DataValidation(type="date", formula1='01/01/1900', operator='greaterThanOrEqual')
+        params = {"type": "date"}
+        if (self.before is not None and self.after is not None):
+            params["formula1"] = parser.parse(self.after).strftime("%Y/%m/%d")
+            params["formula2"] = parser.parse(self.before).strftime("%Y/%m/%d")
+            params["operator"] = "between"
+        elif self.before is not None:
+            params["formula1"] = parser.parse(self.before).strftime("%Y/%m/%d")
+            params["operator"] = "lessThanOrEqual"
+        elif self.after is not None:
+            params["formula1"] = parser.parse(self.after).strftime("%Y/%m/%d")
+            params["operator"] = "greaterThanOrEqual"
+
+        dv = DataValidation(**params)
         dv.add("{}2:{}1048576".format(column, column))
         return dv
 
     def describe(self, column_name):
-        return "{} : Date {}".format(column_name, "(required)" if not self.empty_ok else "")
+        text = "{} : Date".format(column_name)
+        if (self.after is not None and self.before is not None):
+            text += " ({} - {})".format(self.after, self.before)
+        elif self.after is not None:
+            text += " >= {}".format(self.after)
+        elif self.before is not None:
+            text += " <= {}".format(self.before)
+
+        if not self.empty_ok:
+            text += " (required)"
+
+        return text
 
 
 class TimeValidator(Validator):
     """ Validates that a field is a Time """
 
-    def __init__(self, **kwargs):
+    def __init__(self, before=None, after=None, **kwargs):
         super(TimeValidator, self).__init__(**kwargs)
+
+        if before:
+            try:
+                parser.parse(before).time()
+                self.before = before
+            except parser.ParserError as e:
+                raise BadValidatorException(e)
+
+        if after:
+            try:
+                parser.parse(after).time()
+                self.after = after
+            except parser.ParserError as e:
+                raise BadValidatorException(e)
 
     def validate(self, field, row_number, row={}):
         if self.ignore_space:
@@ -360,7 +421,17 @@ class TimeValidator(Validator):
             if field or not self.empty_ok:
                 # Pandas auto convert fields into dates (ignoring the parse_dates=False)
                 field = str(field)
-                parser.parse(field).time()
+                time = parser.parse(field).time()
+
+                if self.before and not time < parser.parse(self.before).time():
+                    self.invalid_dict["invalid_set"].add(field)
+                    self.invalid_dict["invalid_rows"].add(row_number)
+                    raise ValidationException("Value {} is not before {}".format(field, self.before))
+
+                if self.after and not time > parser.parse(self.after).time():
+                    self.invalid_dict["invalid_set"].add(field)
+                    self.invalid_dict["invalid_rows"].add(row_number)
+                    raise ValidationException("Value {} is not after {}".format(field, self.after))
 
         except parser.ParserError as e:
             self.invalid_dict["invalid_set"].add(field)
@@ -373,12 +444,36 @@ class TimeValidator(Validator):
 
     def generate(self, column, additional_column=None, additional_worksheet=None):
         # GreaterThanOrEqual for validity with ODS.
-        dv = DataValidation(type="time")
+
+        params = {"type": "time"}
+        if (self.before is not None and self.after is not None):
+            params["formula1"] = parser.parse(self.after).strftime("%H:%M:%S")
+            params["formula2"] = parser.parse(self.before).strftime("%H:%M:%S")
+            params["operator"] = "between"
+        elif self.before is not None:
+            params["formula1"] = parser.parse(self.before).strftime("%H:%M:%S")
+            params["operator"] = "lessThanOrEqual"
+        elif self.after is not None:
+            params["formula1"] = parser.parse(self.after).strftime("%H:%M:%S")
+            params["operator"] = "greaterThanOrEqual"
+
+        dv = DataValidation(**params)
         dv.add("{}2:{}1048576".format(column, column))
         return dv
 
     def describe(self, column_name):
-        return "{} : Time {}".format(column_name, "(required)" if not self.empty_ok else "")
+        text = "{} : Time".format(column_name)
+        if (self.after is not None and self.before is not None):
+            text += " ({} - {})".format(self.after, self.before)
+        elif self.after is not None:
+            text += " >= {}".format(self.after)
+        elif self.before is not None:
+            text += " <= {}".format(self.before)
+
+        if not self.empty_ok:
+            text += " (required)"
+
+        return text
 
 
 class EmailValidator(Validator):
