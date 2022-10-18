@@ -144,7 +144,7 @@ class Checkcel(Checkplate):
             if column in self.validators:
                 validator = self.validators[column]
                 try:
-                    validator.validate(row[column], self.line_count, row=row)
+                    validator.validate(row[column], self.line_count, row)
                 except ValidationException as e:
                     self.failures[column][self.line_count].append(e)
                     validator.fail_count += 1

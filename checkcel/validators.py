@@ -18,13 +18,40 @@ from checkcel import logs
 class Validator(object):
     """ Generic Validator class """
 
-    def __init__(self, empty_ok=None, ignore_case=None, ignore_space=None):
+    def __init__(self, empty_ok=None, ignore_case=None, ignore_space=None, empty_ok_if=None):
         self.logger = logs.logger
         self.invalid_dict = defaultdict(set)
         self.fail_count = 0
         self.empty_ok = empty_ok
         self.ignore_case = ignore_case
         self.ignore_space = ignore_space
+        self.empty_ok_if = empty_ok_if
+        self.empty_check = True if not empty_ok_if else False
+
+        if empty_ok_if:
+            if not isinstance(empty_ok_if, dict) or isinstance(empty_ok_if, str):
+                BadValidatorException("empty_ok_if must be a dict or a string")
+
+    def _precheck_empty_ok_if(self, row):
+        if isinstance(self.empty_ok_if, dict):
+            linked_columns = self.empty_ok_if.keys()
+        elif isinstance(self.empty_ok_if, str):
+            linked_columns = [self.empty_ok_if]
+        elif isinstance(self.empty_ok_if, list):
+            linked_columns = self.empty_ok_if
+        if not all([col in row for col in linked_columns]):
+            raise BadValidatorException("One of more linked column for empty_ok_if {} is not in file columns".format(linked_columns))
+        self.empty_check = True
+
+    def _can_be_empty(self, row):
+        if self.empty_ok and not self.empty_ok_if:
+            return True
+        if isinstance(self.empty_ok_if, dict):
+            return all([row[key] in values for key, values in self.empty_ok_if.values()])
+        elif isinstance(self.empty_ok_if, str):
+            return row[self.empty_ok_if] == ""
+        elif isinstance(self.empty_ok_if, list):
+            return all([row[col] == "" for col in self.empty_ok_if])
 
     @property
     def bad(self):
@@ -78,8 +105,11 @@ class TextValidator(Validator):
     def __init__(self, **kwargs):
         super(TextValidator, self).__init__(**kwargs)
 
-    def validate(self, field, row_number, row={}):
-        if not field and not self.empty_ok:
+    def validate(self, field, row_number, row):
+        if not self.empty_check:
+            self._precheck_empty_ok_if(row)
+
+        if not field and not self._can_be_empty(row):
             raise ValidationException(
                 "Field cannot be empty"
             )
@@ -103,12 +133,15 @@ class CastValidator(Validator):
         self.min = min
         self.max = max
 
-    def validate(self, field, row_number, row={}):
+    def validate(self, field, row_number, row):
+        if not self.empty_check:
+            self._precheck_empty_ok_if(row)
+
         if self.ignore_space:
             field = field.strip()
 
         try:
-            if field or not self.empty_ok:
+            if field or not self._can_be_empty(row):
                 field = self.cast(field)
                 if self.min is not None and field < self.min:
                     self.invalid_dict["invalid_set"].add(field)
@@ -186,11 +219,21 @@ class SetValidator(Validator):
         if self.empty_ok:
             self.valid_values.add("")
 
-    def validate(self, field, row_number, row={}):
+    def validate(self, field, row_number, row):
+        if not self.empty_check:
+            self._precheck_empty_ok_if(row)
+
         if self.ignore_case:
             field = field.lower()
         if self.ignore_space:
             field = field.strip()
+
+        if not (field or self._can_be_empty(row)):
+            self.invalid_dict["invalid_set"].add(field)
+            self.invalid_dict["invalid_rows"].add(row_number)
+            raise ValidationException(
+                "'{}' is invalid".format(field)
+            )
 
         if field not in self.valid_values:
             self.invalid_dict["invalid_set"].add(field)
@@ -263,8 +306,10 @@ class LinkedSetValidator(Validator):
 
         if not self.column_check:
             self._precheck_unique_with(row)
-        if field == "" and self.empty_ok:
+
+        if not field and self.empty_ok:
             return
+
         related_column_value = row[self.linked_column]
         if not related_column_value:
             self.invalid_dict["invalid_rows"].add(row_number)
@@ -333,12 +378,15 @@ class DateValidator(Validator):
         self.before = before
         self.after = after
 
-    def validate(self, field, row_number, row={}):
+    def validate(self, field, row_number, row):
+        if not self.empty_check:
+            self._precheck_empty_ok_if(row)
+
         if self.ignore_space:
             field = field.strip()
 
         try:
-            if field or not self.empty_ok:
+            if field or not self._can_be_empty(row):
                 # Pandas auto convert fields into dates (ignoring the parse_dates=False)
                 field = str(field)
                 date = parser.parse(field, dayfirst=self.day_first).date()
@@ -416,11 +464,14 @@ class TimeValidator(Validator):
         self.before = before
         self.after = after
 
-    def validate(self, field, row_number, row={}):
+    def validate(self, field, row_number, row):
+        if not self.empty_check:
+            self._precheck_empty_ok_if(row)
+
         if self.ignore_space:
             field = field.strip()
         try:
-            if field or not self.empty_ok:
+            if field or not self._can_be_empty(row):
                 # Pandas auto convert fields into dates (ignoring the parse_dates=False)
                 field = str(field)
                 time = parser.parse(field).time()
@@ -484,10 +535,13 @@ class EmailValidator(Validator):
     def __init__(self, **kwargs):
         super(EmailValidator, self).__init__(**kwargs)
 
-    def validate(self, field, row_number, row={}):
+    def validate(self, field, row_number, row):
+        if not self.empty_check:
+            self._precheck_empty_ok_if(row)
+
         if self.ignore_space:
             field = field.strip()
-        if field or not self.empty_ok:
+        if field or not self._can_be_empty(row):
             try:
                 validate_email(field)
             except EmailNotValidError as e:
@@ -527,11 +581,14 @@ class OntologyValidator(Validator):
         if self.root_term and not self.root_term_iri:
             raise BadValidatorException("'{}' is not a valid root term for ontology {}".format(self.root_term, self.ontology))
 
-    def validate(self, field, row_number, row={}):
+    def validate(self, field, row_number, row):
+        if not self.empty_check:
+            self._precheck_empty_ok_if(row)
+
         if self.ignore_space:
             field = field.strip()
 
-        if field == "" and self.empty_ok:
+        if field == "" and self._can_be_empty(row):
             return
 
         if field in self.invalid_dict["invalid_set"]:
@@ -643,12 +700,15 @@ class UniqueValidator(Validator):
             raise BadValidatorException(extra)
         self.unique_check = True
 
-    def validate(self, field, row_number, row={}):
+    def validate(self, field, row_number, row):
+        if not self.empty_check:
+            self._precheck_empty_ok_if(row)
+
         if self.ignore_space:
             field = field.strip()
 
         if not field:
-            if self.empty_ok:
+            if self._can_be_empty(row):
                 return
             else:
                 raise ValidationException(
@@ -723,11 +783,14 @@ class VocabulaireOuvertValidator(Validator):
             if not exists:
                 raise BadValidatorException("'{}' is not a valid root term. Make sure it is a concept, and not a microthesaurus or group".format(self.root_term))
 
-    def validate(self, field, row_number, row={}):
+    def validate(self, field, row_number, row):
+        if not self.empty_check:
+            self._precheck_empty_ok_if(row)
+
         if self.ignore_space:
             field = field.strip()
 
-        if field == "" and self.empty_ok:
+        if field == "" and self._can_be_empty(row):
             return
 
         if field in self.invalid_dict["invalid_set"]:
@@ -846,11 +909,14 @@ class RegexValidator(Validator):
         except re.error:
             raise BadValidatorException("'{}' is not a valid regular expression".format(self.regex))
 
-    def validate(self, field, row_number, row={}):
+    def validate(self, field, row_number, row):
+        if not self.empty_check:
+            self._precheck_empty_ok_if(row)
+
         if self.ignore_space:
             field = field.strip()
 
-        if field == "" and self.empty_ok:
+        if field == "" and self._can_be_empty(row):
             return
 
         matches = re.findall(self.regex, field)
@@ -901,11 +967,14 @@ class GPSValidator(Validator):
         self.only_long = only_long
         self.only_lat = only_lat
 
-    def validate(self, field, row_number, row={}):
+    def validate(self, field, row_number, row):
+        if not self.empty_check:
+            self._precheck_empty_ok_if(row)
+
         if self.ignore_space:
             field = field.strip()
 
-        if field == "" and self.empty_ok:
+        if field == "" and self._can_be_empty(row):
             return
 
         if self.format == "DD":
