@@ -108,7 +108,7 @@ In all cases, you will need to at least include a list of validators and associa
 * *ignore_space* (Default False): whether to trim the values for spaces before checking validity
 * *ignore_case* (Default False): whether to ignore the case
 
-The last 3 parameters will affect all the validators (when relevant), but can be overriden at the validator level (eg, you can set 'empty_ok' to True for all, but set it to False for a specific validator). 
+The last 3 parameters will affect all the validators (when relevant), but can be overriden at the validator level (eg, you can set 'empty_ok' to True for all, but set it to False for a specific validator).
 
 
 ## Python format
@@ -165,13 +165,17 @@ All validators (except NoValidator) have the 'empty_ok' option, which will consi
   * *valid_values*: Dict with the *linked_column* values as keys, and list of valid values as values
     * Ex: {"Test": ['1', '2'], "Test2": ['3', '4']}
 * EmailValidator(empty_ok=False)
-* DateValidator(day_first=True, empty_ok=False)
-  * Validate that a value is a date. 
+* DateValidator(day_first=True, empty_ok=False, before=None, after=None)
+  * Validate that a value is a date.
   * *day_first* (Default True): Whether to consider the day as the first part of the date for ambiguous values.
-* TimeValidator(empty_ok=False)
+  * *before* Latest date allowed
+  * *after*: Earliest date allowed
+* TimeValidator(empty_ok=False, before=None, after=None)
   * Validate that a value is a time of the day
+  * *before* Latest value allowed
+  * *after*: Earliest value allowed
 * UniqueValidator(unique_with=[], empty_ok=False)
-  * Validate that a column has only unique values. 
+  * Validate that a column has only unique values.
   * *unique_with*: List of column names if you need a tuple of column values to be unique.
     * Ex: *I want the tuple (value of column A, value of column B) to be unique*
 * OntologyValidator(ontology, root_term="", empty_ok=False)
@@ -195,5 +199,5 @@ All validators (except NoValidator) have the 'empty_ok' option, which will consi
 * RegexValidator(regex, excel_formulat="", empty_ok=False)
   * Validate that a term match a specific regex
   * **No in-file validation generated** *unless using excel_formula*
-  * *excel_formula*: Custom rules for in-file validation. [Examples here](http://www.contextures.com/xlDataVal07.html). 
+  * *excel_formula*: Custom rules for in-file validation. [Examples here](http://www.contextures.com/xlDataVal07.html).
     * "{CNAME}" will be replaced by the appropriate column name
