@@ -26,16 +26,16 @@ class Validator(object):
         self.ignore_case = ignore_case
         self.ignore_space = ignore_space
         self.empty_ok_if = empty_ok_if
-        self.empty_ok_unless = empty_ok_if
+        self.empty_ok_unless = empty_ok_unless
         self.empty_check = True if not (empty_ok_if or empty_ok_unless) else False
         self.readme = None
 
         if empty_ok_if:
-            if not isinstance(empty_ok_if, dict) or isinstance(empty_ok_if, list) or isinstance(empty_ok_if, str):
+            if not (isinstance(empty_ok_if, dict) or isinstance(empty_ok_if, list) or isinstance(empty_ok_if, str)):
                 raise BadValidatorException("empty_ok_if must be a dict, a list, or a string")
 
         if empty_ok_unless:
-            if not isinstance(empty_ok_unless, dict) or isinstance(empty_ok_unless, list) or isinstance(empty_ok_unless, str):
+            if not (isinstance(empty_ok_unless, dict) or isinstance(empty_ok_unless, list) or isinstance(empty_ok_unless, str)):
                 raise BadValidatorException("empty_ok_unless must be a dict, a list, or a string")
 
         if empty_ok_if and empty_ok_unless:
@@ -56,7 +56,7 @@ class Validator(object):
                 linked_columns = self.empty_ok_unless.keys()
             elif isinstance(self.empty_ok_unless, str):
                 linked_columns = [self.empty_ok_unless]
-            elif isinstance(self.empty_ok_if, list):
+            elif isinstance(self.empty_ok_unless, list):
                 linked_columns = self.empty_ok_unless
             if not all([col in row for col in linked_columns]):
                 raise BadValidatorException("One of more linked column for empty_ok_unless {} is not in file columns".format(linked_columns))
@@ -65,7 +65,7 @@ class Validator(object):
     def _can_be_empty(self, row):
         if self.empty_ok_if:
             if isinstance(self.empty_ok_if, dict):
-                return all([row[key] in values for key, values in self.empty_ok_if.values()])
+                return all([row[key] in values for key, values in self.empty_ok_if.items()])
             elif isinstance(self.empty_ok_if, str):
                 return row[self.empty_ok_if] != ""
             elif isinstance(self.empty_ok_if, list):
@@ -73,7 +73,7 @@ class Validator(object):
 
         if self.empty_ok_unless:
             if isinstance(self.empty_ok_unless, dict):
-                return all([row[key] not in values for key, values in self.empty_ok_unless.values()])
+                return all([row[key] not in values for key, values in self.empty_ok_unless.items()])
             elif isinstance(self.empty_ok_unless, str):
                 return row[self.empty_ok_unless] == ""
             elif isinstance(self.empty_ok_unless, list):
