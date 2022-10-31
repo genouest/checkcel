@@ -28,7 +28,7 @@ class Validator(object):
         self.empty_ok_if = empty_ok_if
         self.empty_ok_unless = empty_ok_unless
         self.empty_check = True if not (empty_ok_if or empty_ok_unless) else False
-        self.readme = None
+        self.readme = readme
 
         if empty_ok_if:
             if not (isinstance(empty_ok_if, dict) or isinstance(empty_ok_if, list) or isinstance(empty_ok_if, str)):
@@ -121,7 +121,7 @@ class NoValidator(Validator):
 
     def describe(self, column_name):
         if self.readme:
-            column_name += " {}".format(self.readme)
+            column_name += " ({})".format(self.readme)
         return "{}: Free value".format(column_name)
 
     @property
@@ -153,7 +153,7 @@ class TextValidator(Validator):
 
     def describe(self, column_name):
         if self.readme:
-            column_name += " {}".format(self.readme)
+            column_name += " ({})".format(self.readme)
         return "{} : Free text {}".format(column_name, "(required)" if not self.empty_ok else "")
 
 
@@ -211,7 +211,7 @@ class CastValidator(Validator):
 
     def describe(self, column_name):
         if self.readme:
-            column_name += " {}".format(self.readme)
+            column_name += " ({})".format(self.readme)
 
         text = "{} : {} number".format(column_name, self.type.capitalize())
         if (self.min is not None and self.max is not None):
@@ -317,7 +317,7 @@ class SetValidator(Validator):
 
     def describe(self, column_name):
         if self.readme:
-            column_name += " {}".format(self.readme)
+            column_name += " ({})".format(self.readme)
         return "{} : (Allowed values : {}) {}".format(column_name, ", ".join(self.ordered_values), "(required)" if not self.empty_ok else "")
 
 
@@ -391,7 +391,7 @@ class LinkedSetValidator(Validator):
 
     def describe(self, column_name):
         if self.readme:
-            column_name += " {}".format(self.readme)
+            column_name += " ({})".format(self.readme)
         return "{} : Linked values to column {} {}".format(column_name, self.linked_column, "(required)" if not self.empty_ok else "")
 
 
@@ -469,7 +469,7 @@ class DateValidator(Validator):
 
     def describe(self, column_name):
         if self.readme:
-            column_name += " {}".format(self.readme)
+            column_name += " ({})".format(self.readme)
         text = "{} : Date".format(column_name)
         if (self.after is not None and self.before is not None):
             text += " ({} - {})".format(self.after, self.before)
@@ -557,7 +557,7 @@ class TimeValidator(Validator):
 
     def describe(self, column_name):
         if self.readme:
-            column_name += " {}".format(self.readme)
+            column_name += " ({})".format(self.readme)
         text = "{} : Time".format(column_name)
         if (self.after is not None and self.before is not None):
             text += " ({} - {})".format(self.after, self.before)
@@ -606,7 +606,7 @@ class EmailValidator(Validator):
 
     def describe(self, column_name):
         if self.readme:
-            column_name += " {}".format(self.readme)
+            column_name += " ({})".format(self.readme)
         return "{} : Email {}".format(column_name, "(required)" if not self.empty_ok else "")
 
 
@@ -670,7 +670,7 @@ class OntologyValidator(Validator):
 
     def describe(self, column_name):
         if self.readme:
-            column_name += " {}".format(self.readme)
+            column_name += " ({})".format(self.readme)
         text = "{} : Ontological term from {} ontology.".format(column_name, self.ontology)
         if self.root_term:
             text += " Root term is : {}".format(self.root_term)
@@ -801,7 +801,7 @@ class UniqueValidator(Validator):
 
     def describe(self, column_name):
         if self.readme:
-            column_name += " {}".format(self.readme)
+            column_name += " ({})".format(self.readme)
         text = "{} : Unique value".format(column_name)
         if self.unique_with:
             text += " Must be unique with column(s) {}".format(", ".join(self.unique_with))
@@ -891,7 +891,7 @@ class VocabulaireOuvertValidator(Validator):
 
     def describe(self, column_name):
         if self.readme:
-            column_name += " {}".format(self.readme)
+            column_name += " ({})".format(self.readme)
         text = "{} : Ontological term from Vocabulaires ouverts.".format(column_name)
         if self.root_term:
             text += " Root term is : {}".format(self.root_term)
@@ -997,7 +997,7 @@ class RegexValidator(Validator):
 
     def describe(self, column_name):
         if self.readme:
-            column_name += " {}".format(self.readme)
+            column_name += " ({})".format(self.readme)
         text = "{} : Term matching the regex {}.".format(column_name, self.regex)
         if not self.empty_ok:
             text += " (required)"
@@ -1064,7 +1064,7 @@ class GPSValidator(Validator):
 
     def describe(self, column_name):
         if self.readme:
-            column_name += " {}".format(self.readme)
+            column_name += " ({})".format(self.readme)
         text = "{} : GPS coordinate".format(column_name)
         if not self.empty_ok:
             text += " (required)"
