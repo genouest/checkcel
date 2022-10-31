@@ -18,7 +18,7 @@ from checkcel import logs
 class Validator(object):
     """ Generic Validator class """
 
-    def __init__(self, empty_ok=None, ignore_case=None, ignore_space=None, empty_ok_if=None):
+    def __init__(self, empty_ok=None, ignore_case=None, ignore_space=None, empty_ok_if=None, empty_ok_unless=None, readme=None):
         self.logger = logs.logger
         self.invalid_dict = defaultdict(set)
         self.fail_count = 0
@@ -26,32 +26,60 @@ class Validator(object):
         self.ignore_case = ignore_case
         self.ignore_space = ignore_space
         self.empty_ok_if = empty_ok_if
-        self.empty_check = True if not empty_ok_if else False
+        self.empty_ok_unless = empty_ok_if
+        self.empty_check = True if not (empty_ok_if or empty_ok_unless) else False
+        self.readme = None
 
         if empty_ok_if:
-            if not isinstance(empty_ok_if, dict) or isinstance(empty_ok_if, str):
-                BadValidatorException("empty_ok_if must be a dict or a string")
+            if not isinstance(empty_ok_if, dict) or isinstance(empty_ok_if, list) or isinstance(empty_ok_if, str):
+                raise BadValidatorException("empty_ok_if must be a dict, a list, or a string")
+
+        if empty_ok_unless:
+            if not isinstance(empty_ok_unless, dict) or isinstance(empty_ok_unless, list) or isinstance(empty_ok_unless, str):
+                raise BadValidatorException("empty_ok_unless must be a dict, a list, or a string")
+
+        if empty_ok_if and empty_ok_unless:
+            raise BadValidatorException("Cannot use both empty_ok_if and empty_ok_unless")
 
     def _precheck_empty_ok_if(self, row):
-        if isinstance(self.empty_ok_if, dict):
-            linked_columns = self.empty_ok_if.keys()
-        elif isinstance(self.empty_ok_if, str):
-            linked_columns = [self.empty_ok_if]
-        elif isinstance(self.empty_ok_if, list):
-            linked_columns = self.empty_ok_if
-        if not all([col in row for col in linked_columns]):
-            raise BadValidatorException("One of more linked column for empty_ok_if {} is not in file columns".format(linked_columns))
+        if self.empty_ok_if:
+            if isinstance(self.empty_ok_if, dict):
+                linked_columns = self.empty_ok_if.keys()
+            elif isinstance(self.empty_ok_if, str):
+                linked_columns = [self.empty_ok_if]
+            elif isinstance(self.empty_ok_if, list):
+                linked_columns = self.empty_ok_if
+            if not all([col in row for col in linked_columns]):
+                raise BadValidatorException("One of more linked column for empty_ok_if {} is not in file columns".format(linked_columns))
+        if self.empty_ok_unless:
+            if isinstance(self.empty_ok_unless, dict):
+                linked_columns = self.empty_ok_unless.keys()
+            elif isinstance(self.empty_ok_unless, str):
+                linked_columns = [self.empty_ok_unless]
+            elif isinstance(self.empty_ok_if, list):
+                linked_columns = self.empty_ok_unless
+            if not all([col in row for col in linked_columns]):
+                raise BadValidatorException("One of more linked column for empty_ok_unless {} is not in file columns".format(linked_columns))
         self.empty_check = True
 
     def _can_be_empty(self, row):
-        if self.empty_ok and not self.empty_ok_if:
-            return True
-        if isinstance(self.empty_ok_if, dict):
-            return all([row[key] in values for key, values in self.empty_ok_if.values()])
-        elif isinstance(self.empty_ok_if, str):
-            return row[self.empty_ok_if] == ""
-        elif isinstance(self.empty_ok_if, list):
-            return all([row[col] == "" for col in self.empty_ok_if])
+        if self.empty_ok_if:
+            if isinstance(self.empty_ok_if, dict):
+                return all([row[key] in values for key, values in self.empty_ok_if.values()])
+            elif isinstance(self.empty_ok_if, str):
+                return row[self.empty_ok_if] != ""
+            elif isinstance(self.empty_ok_if, list):
+                return all([row[col] != "" for col in self.empty_ok_if])
+
+        if self.empty_ok_unless:
+            if isinstance(self.empty_ok_unless, dict):
+                return all([row[key] not in values for key, values in self.empty_ok_unless.values()])
+            elif isinstance(self.empty_ok_unless, str):
+                return row[self.empty_ok_unless] == ""
+            elif isinstance(self.empty_ok_unless, list):
+                return all([row[col] == "" for col in self.empty_ok_unless])
+
+        return self.empty_ok
 
     @property
     def bad(self):
@@ -92,7 +120,9 @@ class NoValidator(Validator):
         return None
 
     def describe(self, column_name):
-        return "{} : Free value".format(column_name)
+        if self.readme:
+            column_name += " {}".format(self.readme)
+        return "{}: Free value".format(column_name)
 
     @property
     def bad(self):
@@ -122,6 +152,8 @@ class TextValidator(Validator):
         return None
 
     def describe(self, column_name):
+        if self.readme:
+            column_name += " {}".format(self.readme)
         return "{} : Free text {}".format(column_name, "(required)" if not self.empty_ok else "")
 
 
@@ -178,6 +210,9 @@ class CastValidator(Validator):
         return dv
 
     def describe(self, column_name):
+        if self.readme:
+            column_name += " {}".format(self.readme)
+
         text = "{} : {} number".format(column_name, self.type.capitalize())
         if (self.min is not None and self.max is not None):
             text += " ({} - {})".format(self.min, self.max)
@@ -281,6 +316,8 @@ class SetValidator(Validator):
         return dv
 
     def describe(self, column_name):
+        if self.readme:
+            column_name += " {}".format(self.readme)
         return "{} : (Allowed values : {}) {}".format(column_name, ", ".join(self.ordered_values), "(required)" if not self.empty_ok else "")
 
 
@@ -353,6 +390,8 @@ class LinkedSetValidator(Validator):
         return dv
 
     def describe(self, column_name):
+        if self.readme:
+            column_name += " {}".format(self.readme)
         return "{} : Linked values to column {} {}".format(column_name, self.linked_column, "(required)" if not self.empty_ok else "")
 
 
@@ -429,6 +468,8 @@ class DateValidator(Validator):
         return dv
 
     def describe(self, column_name):
+        if self.readme:
+            column_name += " {}".format(self.readme)
         text = "{} : Date".format(column_name)
         if (self.after is not None and self.before is not None):
             text += " ({} - {})".format(self.after, self.before)
@@ -515,6 +556,8 @@ class TimeValidator(Validator):
         return dv
 
     def describe(self, column_name):
+        if self.readme:
+            column_name += " {}".format(self.readme)
         text = "{} : Time".format(column_name)
         if (self.after is not None and self.before is not None):
             text += " ({} - {})".format(self.after, self.before)
@@ -562,6 +605,8 @@ class EmailValidator(Validator):
         return dv
 
     def describe(self, column_name):
+        if self.readme:
+            column_name += " {}".format(self.readme)
         return "{} : Email {}".format(column_name, "(required)" if not self.empty_ok else "")
 
 
@@ -624,6 +669,8 @@ class OntologyValidator(Validator):
         return dv
 
     def describe(self, column_name):
+        if self.readme:
+            column_name += " {}".format(self.readme)
         text = "{} : Ontological term from {} ontology.".format(column_name, self.ontology)
         if self.root_term:
             text += " Root term is : {}".format(self.root_term)
@@ -753,6 +800,8 @@ class UniqueValidator(Validator):
         return dv
 
     def describe(self, column_name):
+        if self.readme:
+            column_name += " {}".format(self.readme)
         text = "{} : Unique value".format(column_name)
         if self.unique_with:
             text += " Must be unique with column(s) {}".format(", ".join(self.unique_with))
@@ -841,6 +890,8 @@ class VocabulaireOuvertValidator(Validator):
         return dv
 
     def describe(self, column_name):
+        if self.readme:
+            column_name += " {}".format(self.readme)
         text = "{} : Ontological term from Vocabulaires ouverts.".format(column_name)
         if self.root_term:
             text += " Root term is : {}".format(self.root_term)
@@ -945,6 +996,8 @@ class RegexValidator(Validator):
         return dv
 
     def describe(self, column_name):
+        if self.readme:
+            column_name += " {}".format(self.readme)
         text = "{} : Term matching the regex {}.".format(column_name, self.regex)
         if not self.empty_ok:
             text += " (required)"
@@ -1010,6 +1063,8 @@ class GPSValidator(Validator):
         return None
 
     def describe(self, column_name):
+        if self.readme:
+            column_name += " {}".format(self.readme)
         text = "{} : GPS coordinate".format(column_name)
         if not self.empty_ok:
             text += " (required)"
