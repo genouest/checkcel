@@ -105,8 +105,15 @@ In all cases, you will need to at least include a list of validators and associa
 
 * *metadata*: A list of column names. This will create a metadata sheet with these columns, without validation on them
 * *empty_ok* (Default False): Whether to accept empty values as valid
+* *empty_ok_if* (Default None): Accept empty value as valid if **another column** value is set
+    * Accept either a string (column name), a list (list of column names), or a dict
+      * The dict keys must be column names, and the values lists of 'accepted values'. The current column will accept empty values if the related column's value is in the list of accepted values
+* *empty_ok_unless* (Default None): Accept empty value as valid *unless* **another column** value is set
+    * Accept either a string (column name), a list (list of column names), or a dict
+      * The dict keys must be column names, and the values lists of 'rejected values'. The current column will accept empty values if the related column's value is **not** in the list of reject values
 * *ignore_space* (Default False): whether to trim the values for spaces before checking validity
 * *ignore_case* (Default False): whether to ignore the case
+* *readme* (Default None): Additional information to include on the readme page
 
 The last 3 parameters will affect all the validators (when relevant), but can be overriden at the validator level (eg, you can set 'empty_ok' to True for all, but set it to False for a specific validator).
 

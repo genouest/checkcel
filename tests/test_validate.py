@@ -499,3 +499,83 @@ class TestCheckcelValidateGPS():
         df = pd.DataFrame.from_dict(data)
         val = Checkcel(data=df, validators=validators)
         assert val.validate()
+
+
+class TestCheckcelValidateEmpty_if():
+
+    def test_invalid_string(self):
+        data = {'my_column': ["", "not_empty"], "another_column": ["", ""]}
+        validators = {
+            'my_column': TextValidator(empty_ok=True),
+            'another_column': TextValidator(empty_ok_if="my_column")
+        }
+        df = pd.DataFrame.from_dict(data)
+        validation = Checkcel(data=df, empty_ok=False, validators=validators)
+        val = validation.validate()
+        assert val is False
+        assert len(validation.failures['another_column']) == 1
+
+    def test_invalid_list(self):
+        data = {'my_column': ["", "", "not_empty", "not_empty"], 'my_column2': ["", "not_empty", "", "not_empty"], "another_column": ["", "", "", ""]}
+        validators = {
+            'my_column': TextValidator(empty_ok=True),
+            'my_column2': TextValidator(empty_ok=True),
+            'another_column': TextValidator(empty_ok_if=["my_column", "my_column2"])
+        }
+        df = pd.DataFrame.from_dict(data)
+        validation = Checkcel(data=df, empty_ok=False, validators=validators)
+        val = validation.validate()
+        assert val is False
+        assert len(validation.failures['another_column']) == 3
+
+    def test_invalid_dict(self):
+        data = data = {'my_column': ["", "invalid_value", "valid_value"], "another_column": ["", "", ""]}
+        validators = {
+            'my_column': TextValidator(empty_ok=True),
+            'another_column': TextValidator(empty_ok_if={"my_column": ["valid_value"]})
+        }
+        df = pd.DataFrame.from_dict(data)
+        validation = Checkcel(data=df, empty_ok=False, validators=validators)
+        val = validation.validate()
+        assert val is False
+        assert len(validation.failures['another_column']) == 2
+
+
+class TestCheckcelValidateEmpty_unless():
+
+    def test_invalid_string(self):
+        data = {'my_column': ["", "not_empty"], "another_column": ["", ""]}
+        validators = {
+            'my_column': TextValidator(empty_ok=True),
+            'another_column': TextValidator(empty_ok_unless="my_column")
+        }
+        df = pd.DataFrame.from_dict(data)
+        validation = Checkcel(data=df, empty_ok=False, validators=validators)
+        val = validation.validate()
+        assert val is False
+        assert len(validation.failures['another_column']) == 1
+
+    def test_invalid_list(self):
+        data = {'my_column': ["", "", "not_empty", "not_empty"], 'my_column2': ["", "not_empty", "", "not_empty"], "another_column": ["", "", "", ""]}
+        validators = {
+            'my_column': TextValidator(empty_ok=True),
+            'my_column2': TextValidator(empty_ok=True),
+            'another_column': TextValidator(empty_ok_unless=["my_column", "my_column2"])
+        }
+        df = pd.DataFrame.from_dict(data)
+        validation = Checkcel(data=df, empty_ok=False, validators=validators)
+        val = validation.validate()
+        assert val is False
+        assert len(validation.failures['another_column']) == 3
+
+    def test_invalid_dict(self):
+        data = data = {'my_column': ["", "invalid_value", "valid_value"], "another_column": ["", "", ""]}
+        validators = {
+            'my_column': TextValidator(empty_ok=True),
+            'another_column': TextValidator(empty_ok_unless={"my_column": ["invalid_value"]})
+        }
+        df = pd.DataFrame.from_dict(data)
+        validation = Checkcel(data=df, empty_ok=False, validators=validators)
+        val = validation.validate()
+        assert val is False
+        assert len(validation.failures['another_column']) == 1
