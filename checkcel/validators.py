@@ -462,6 +462,9 @@ class DateValidator(Validator):
         elif self.after is not None:
             params["formula1"] = parser.parse(self.after).strftime("%Y/%m/%d")
             params["operator"] = "greaterThanOrEqual"
+        else:
+            params["formula1"] = "01/01/1900"
+            params["operator"] = "greaterThanOrEqual"
 
         dv = DataValidation(**params)
         dv.add("{}2:{}1048576".format(column, column))
