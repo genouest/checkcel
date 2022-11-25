@@ -33,7 +33,7 @@ class Checkplate(object):
         self.logs.append(message)
 
     def info(self, message):
-        self.logger.log(message)
+        self.logger.info(message)
         self.logs.append(message)
 
     def warn(self, message):
