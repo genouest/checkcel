@@ -4,6 +4,29 @@ from checkcel import Checkcel
 from checkcel.validators import TextValidator, DateValidator, UniqueValidator, SetValidator, LinkedSetValidator, IntValidator, FloatValidator, GPSValidator, EmailValidator, TimeValidator, NoValidator, RegexValidator
 
 
+class TestCheckcelClass():
+
+    def test_invalid_rows_below(self):
+        data = {'my_column': ['myvalue', 'my_value2']}
+        validators = {'my_column': TextValidator()}
+        df = pd.DataFrame.from_dict(data)
+        validation = Checkcel(data=df, expected_rows=1, validators=validators)
+        val = validation.validate()
+        assert val is False
+        assert len(validation.logs) == 2
+        assert validation.logs[1] == "Error: Length issue: Expecting 1 row(s), found 2"
+
+    def test_invalid_rows_above(self):
+        data = {'my_column': ['myvalue']}
+        validators = {'my_column': TextValidator()}
+        df = pd.DataFrame.from_dict(data)
+        validation = Checkcel(data=df, expected_rows=2, validators=validators)
+        val = validation.validate()
+        assert val is False
+        assert len(validation.logs) == 2
+        assert validation.logs[1] == "Error: Length issue: Expecting 2 row(s), found 1"
+
+
 class TestCheckcelValidateText():
 
     def test_invalid_empty(self):

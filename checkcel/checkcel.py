@@ -127,6 +127,11 @@ class Checkcel(Checkplate):
             self._log_missing_fields()
             return False
 
+        if self.expected_rows:
+            if not self.expected_rows == len(df.index):
+                self.error("Length issue: Expecting {} row(s), found {}".format(self.expected_rows, len(df.index)))
+                return False
+
         # Might be a way to do it more efficiently..
         df.apply(lambda row: self._validate(row), axis=1)
 
