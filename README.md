@@ -64,6 +64,8 @@ Invalid fields: [''] in rows: [3]
 IntValidator failed 5 time(s) (100.0%) on field: 'Pierraille surface (25)'
 ```
 
+When calling validate() (from python), you can access a list of logs with the 'logs' parameter of the Checkcel/Checkxtractor/Checkerator class
+
 # Python library
 
 ```python
@@ -104,19 +106,12 @@ Validation templates can use three formats: json/yaml, and python files.
 In all cases, you will need to at least include a list of validators and associated column names. Several optional parameters are also available :
 
 * *metadata*: A list of column names. This will create a metadata sheet with these columns, without validation on them
+* *expected_rows*: (Default 0): Number of *data* rows expected
 * *empty_ok* (Default False): Whether to accept empty values as valid
-* *empty_ok_if* (Default None): Accept empty value as valid if **another column** value is set
-    * Accept either a string (column name), a list (list of column names), or a dict
-      * The dict keys must be column names, and the values lists of 'accepted values'. The current column will accept empty values if the related column's value is in the list of accepted values
-* *empty_ok_unless* (Default None): Accept empty value as valid *unless* **another column** value is set
-    * Accept either a string (column name), a list (list of column names), or a dict
-      * The dict keys must be column names, and the values lists of 'rejected values'. The current column will accept empty values if the related column's value is **not** in the list of reject values
 * *ignore_space* (Default False): whether to trim the values for spaces before checking validity
 * *ignore_case* (Default False): whether to ignore the case
-* *readme* (Default None): Additional information to include on the readme page
 
 The last 3 parameters will affect all the validators (when relevant), but can be overriden at the validator level (eg, you can set 'empty_ok' to True for all, but set it to False for a specific validator).
-
 
 ## Python format
 
@@ -147,13 +142,29 @@ If needed, these dictionnaries can include an 'options' key, containing a dictio
 
 ## Validators
 
-All validators (except NoValidator) have the 'empty_ok' option, which will consider empty values as valid.
-*As in-file validation for non-empty values is unreliable, the non-emptyness is not checked in-file*
+### Global options
+
+All validators (except NoValidator) have these options available. If relevant, these options will override the ones set at the template-level
+
+* *empty_ok* (Default False): Whether to accept empty values as valid (Not enforced in excel)
+* *empty_ok_if* (Default None): Accept empty value as valid if **another column** value is set
+    * Accept either a string (column name), a list (list of column names), or a dict (Not enforced in excel)
+      * The dict keys must be column names, and the values lists of 'accepted values'. The current column will accept empty values if the related column's value is in the list of accepted values
+* *empty_ok_unless* (Default None): Accept empty value as valid *unless* **another column** value is set. (Not enforced in excel)
+    * Accept either a string (column name), a list (list of column names), or a dict
+      * The dict keys must be column names, and the values lists of 'rejected values'. The current column will accept empty values if the related column's value is **not** in the list of reject values
+* *ignore_space* (Default False): whether to trim the values for spaces before checking validity
+* *ignore_case* (Default False): whether to ignore the case
+* *unique* (Default False): whether to enforce unicity for this column. (Not enforced in excel yet, except if there are not other validation (ie TextValidator and RegexValidator in some cases))
+
+*As excel validation for non-empty values is unreliable, the non-emptiness cannot be properly enforced in excel files*
+
+### Validator-specific options
 
 * NoValidator (always True)
   * **No in-file validation generated**
 * TextValidator(empty_ok=False)
-  * **No in-file validation generated**
+  * **No in-file validation generated** (unless *unique* is set)
 * IntValidator(min="", max="", empty_ok=False)
   * Validate that a value is an integer
   * *min*: Minimal value allowed
