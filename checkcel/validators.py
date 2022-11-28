@@ -157,7 +157,7 @@ class TextValidator(Validator):
 
     def generate(self, column):
         if self.unique:
-            params = {"type": "custom"}
+            params = {"type": "custom", "allow_blank": self.empty_ok}
             internal_value = "${0}:${0},{0}2".format(column)
             params["formula1"] = '=COUNTIF({})<2'.format(internal_value)
             dv = DataValidation(**params)
@@ -216,7 +216,7 @@ class CastValidator(Validator):
         return self.invalid_dict
 
     def generate(self, column):
-        params = {"type": self.type}
+        params = {"type": self.type, "allow_blank": self.empty_ok}
         if (self.min is not None and self.max is not None):
             params["formula1"] = self.min
             params["formula2"] = self.max
@@ -326,7 +326,7 @@ class SetValidator(Validator):
     def generate(self, column, column_name="", additional_column=None, additional_worksheet=None):
         # If total length > 256 : need to use cells on another sheet
         if additional_column and additional_worksheet:
-            params = {"type": "list"}
+            params = {"type": "list", "allow_blank": self.empty_ok}
             cell = additional_worksheet.cell(column=column_index_from_string(additional_column), row=1, value=column_name)
             cell.font = Font(color="FF0000", bold=True)
             row = 2
@@ -335,7 +335,7 @@ class SetValidator(Validator):
                 row += 1
             params["formula1"] = "{}!${}$2:${}${}".format(quote_sheetname(additional_worksheet.title), additional_column, additional_column, row - 1)
         else:
-            params = {"type": "list"}
+            params = {"type": "list", "allow_blank": self.empty_ok}
             values = ",".join(self.ordered_values)
             params["formula1"] = '"{}"'.format(values)
         dv = DataValidation(**params)
@@ -401,7 +401,7 @@ class LinkedSetValidator(Validator):
         if self.linked_column not in set_columns:
             # TODO raise warning
             return None
-        params = {"type": "list"}
+        params = {"type": "list", "allow_blank": self.empty_ok}
         additional_worksheet.cell(column=column_index_from_string(additional_column), row=1, value=column_name).font = Font(color="FF0000", bold=True)
         row = 2
         row_dict = {}
@@ -488,7 +488,7 @@ class DateValidator(Validator):
 
     def generate(self, column, additional_column=None, additional_worksheet=None):
         # GreaterThanOrEqual for validity with ODS.
-        params = {"type": "date"}
+        params = {"type": "date", "allow_blank": self.empty_ok}
         if (self.before is not None and self.after is not None):
             params["formula1"] = parser.parse(self.after).strftime("%Y/%m/%d")
             params["formula2"] = parser.parse(self.before).strftime("%Y/%m/%d")
@@ -586,7 +586,7 @@ class TimeValidator(Validator):
     def generate(self, column, additional_column=None, additional_worksheet=None):
         # GreaterThanOrEqual for validity with ODS.
 
-        params = {"type": "time"}
+        params = {"type": "time", "allow_blank": self.empty_ok}
         if (self.before is not None and self.after is not None):
             params["formula1"] = parser.parse(self.after).strftime("%H:%M:%S")
             params["formula2"] = parser.parse(self.before).strftime("%H:%M:%S")
@@ -650,7 +650,7 @@ class EmailValidator(Validator):
         return self.invalid_dict
 
     def generate(self, column, ontology_column=None):
-        params = {"type": "custom"}
+        params = {"type": "custom", "allow_blank": self.empty_ok}
         params["formula1"] = '=ISNUMBER(MATCH("*@*.?*",{}2,0))'.format(column)
         dv = DataValidation(**params)
         dv.error = 'Value must be an email'
@@ -718,7 +718,7 @@ class OntologyValidator(Validator):
             additional_worksheet.cell(column=column_index_from_string(additional_column), row=row, value=term)
             row += 1
 
-        params = {"type": "list"}
+        params = {"type": "list", "allow_blank": self.empty_ok}
         params["formula1"] = "{}!${}$2:${}${}".format(quote_sheetname(additional_worksheet.title), additional_column, additional_column, row - 1)
         dv = DataValidation(**params)
         dv.error = 'Value must be an ontological term'
@@ -847,7 +847,7 @@ class UniqueValidator(Validator):
         if self.unique_with and not all([val in column_dict for val in self.unique_with]):
             raise BadValidatorException("Using unique_with, but the related column was not defined before")
 
-        params = {"type": "custom"}
+        params = {"type": "custom", "allow_blank": self.empty_ok}
         internal_value = "${0}:${0},{0}2".format(column)
         if self.unique_with:
             for col in self.unique_with:
@@ -946,7 +946,7 @@ class VocabulaireOuvertValidator(Validator):
             additional_worksheet.cell(column=column_index_from_string(additional_column), row=row, value=term)
             row += 1
 
-        params = {"type": "list"}
+        params = {"type": "list", "allow_blank": self.empty_ok}
         params["formula1"] = "{}!${}$2:${}${}".format(quote_sheetname(additional_worksheet.title), additional_column, additional_column, row - 1)
         dv = DataValidation(**params)
         dv.error = 'Value must be from Vocabulaires ouverts'
@@ -1055,7 +1055,7 @@ class RegexValidator(Validator):
         # Difficult to use regex in Excel without a VBA macro
         if not self.excel_formula:
             if self.unique:
-                params = {"type": "custom"}
+                params = {"type": "custom", "allow_blank": self.empty_ok}
                 internal_value = "${0}:${0},{0}2".format(column)
                 params["formula1"] = '=COUNTIF({})<2'.format(internal_value)
                 dv = DataValidation(**params)
@@ -1143,7 +1143,7 @@ class GPSValidator(Validator):
     def generate(self, column):
         # Difficult to use regex in Excel without a VBA macro
         if self.unique:
-            params = {"type": "custom"}
+            params = {"type": "custom", "allow_blank": self.empty_ok}
             internal_value = "${0}:${0},{0}2".format(column)
             params["formula1"] = '=COUNTIF({})<2'.format(internal_value)
             dv = DataValidation(**params)
