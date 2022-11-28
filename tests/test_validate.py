@@ -15,11 +15,20 @@ class TestCheckcelValidateText():
         assert val is False
         assert len(validation.failures['my_column']) == 1
 
-    def test_valid_empty(self):
-        data = {'my_column': ['', 'myvalue']}
+    def test_invalid_unique(self):
+        data = {'my_column': ['myvalue', 'myvalue']}
         validators = {'my_column': TextValidator()}
         df = pd.DataFrame.from_dict(data)
-        val = Checkcel(data=df, empty_ok=True, validators=validators)
+        validation = Checkcel(data=df, unique=True, validators=validators)
+        val = validation.validate()
+        assert val is False
+        assert len(validation.failures['my_column']) == 1
+
+    def test_valid_empty(self):
+        data = {'my_column': ['', 'myvalue', '']}
+        validators = {'my_column': TextValidator()}
+        df = pd.DataFrame.from_dict(data)
+        val = Checkcel(data=df, empty_ok=True, unique=True, validators=validators)
         assert val.validate()
 
     def test_valid(self):

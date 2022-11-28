@@ -146,7 +146,7 @@ class TextValidator(Validator):
                 "Field cannot be empty"
             )
 
-        if self.unique:
+        if field and self.unique:
             if field in self.unique_values:
                 raise ValidationException("'{}' is already in the column".format(field))
             self.unique_values.add(field)
@@ -201,7 +201,7 @@ class CastValidator(Validator):
                     self.invalid_dict["invalid_rows"].add(row_number)
                     raise ValidationException("{} is above max value {}".format(field, self.max))
 
-                if self.unique:
+                if field and self.unique:
                     if field in self.unique_values:
                         raise ValidationException("'{}' is already in the column".format(field))
                     self.unique_values.add(field)
@@ -299,7 +299,7 @@ class SetValidator(Validator):
             raise ValidationException(
                 "'{}' is invalid".format(field)
             )
-        if self.unique:
+        if field and self.unique:
             if field in self.unique_values:
                 raise ValidationException("'{}' is already in the column".format(field))
             self.unique_values.add(field)
@@ -388,7 +388,7 @@ class LinkedSetValidator(Validator):
             self.invalid_dict["invalid_rows"].add(row_number)
             raise ValidationException("Value {} is not in allowed values".format(field))
 
-        if self.unique:
+        if field and self.unique:
             if field in self.unique_values:
                 raise ValidationException("'{}' is already in the column".format(field))
             self.unique_values.add(field)
@@ -472,7 +472,7 @@ class DateValidator(Validator):
                     self.invalid_dict["invalid_rows"].add(row_number)
                     raise ValidationException("Value {} is not after {}".format(field, self.after))
 
-                if self.unique:
+                if field and self.unique:
                     if field in self.unique_values:
                         raise ValidationException("'{}' is already in the column".format(field))
                     self.unique_values.add(field)
@@ -569,7 +569,7 @@ class TimeValidator(Validator):
                     self.invalid_dict["invalid_rows"].add(row_number)
                     raise ValidationException("Value {} is not after {}".format(field, self.after))
 
-                if self.unique:
+                if field and self.unique:
                     if field in self.unique_values:
                         raise ValidationException("'{}' is already in the column".format(field))
                     self.unique_values.add(field)
@@ -700,7 +700,7 @@ class OntologyValidator(Validator):
                 self.invalid_dict["invalid_rows"].add(row_number)
                 raise ValidationException("{} is not an ontological term".format(field))
             self.validated_terms.add(field)
-        if self.unique:
+        if field and self.unique:
             if field in self.unique_values:
                 raise ValidationException("'{}' is already in the column".format(field))
             self.unique_values.add(field)
@@ -913,7 +913,7 @@ class VocabulaireOuvertValidator(Validator):
                 raise ValidationException("{} is not an ontological term".format(field))
             self.validated_terms.add(field)
 
-        if self.unique:
+        if field and self.unique:
             if field in self.unique_values:
                 raise ValidationException("'{}' is already in the column".format(field))
             self.unique_values.add(field)
@@ -1042,7 +1042,7 @@ class RegexValidator(Validator):
             self.invalid_dict["invalid_rows"].add(row_number)
             raise ValidationException("{} does not match regex {}".format(field, self.regex))
 
-        if self.unique:
+        if field and self.unique:
             if field in self.unique_values:
                 raise ValidationException("'{}' is already in the column".format(field))
             self.unique_values.add(field)
@@ -1131,7 +1131,7 @@ class GPSValidator(Validator):
             self.invalid_dict["invalid_set"].add(field)
             self.invalid_dict["invalid_rows"].add(row_number)
             raise ValidationException("{} is not a valid GPS coordinate")
-        if self.unique:
+        if field and self.unique:
             if field in self.unique_values:
                 raise ValidationException("'{}' is already in the column".format(field))
             self.unique_values.add(field)
