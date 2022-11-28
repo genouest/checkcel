@@ -480,7 +480,7 @@ class TestCheckcelValidateLinkedSet():
         assert len(validation.failures['another_column']) == 1
 
     def test_invalid_unique(self):
-        data = {'my_column': ['value_1', 'value_2', 'value2', 'value2'], "another_column": ["valid_value", "another_valid_value", "another_valid_value"]}
+        data = {'my_column': ['value_1', 'value_2', 'value2'], "another_column": ["valid_value", "another_valid_value", "another_valid_value"]}
         validators = {
             'my_column': SetValidator(valid_values=['value_1', 'value_2']),
             'another_column': LinkedSetValidator(unique=True, linked_column="my_column", valid_values={"value_1": ["valid_value"], "value_2": ["another_valid_value"]})
