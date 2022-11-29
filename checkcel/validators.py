@@ -18,11 +18,12 @@ from checkcel import logs
 class Validator(object):
     """ Generic Validator class """
 
-    def __init__(self, empty_ok=None, ignore_case=None, ignore_space=None, empty_ok_if=None, empty_ok_unless=None, readme=None, unique=False):
+    def __init__(self, empty_ok=None, ignore_case=None, ignore_space=None, empty_ok_if=None, empty_ok_unless=None, readme=None, unique=False, na_ok=False):
         self.logger = logs.logger
         self.invalid_dict = defaultdict(set)
         self.fail_count = 0
         self.empty_ok = empty_ok
+        self.na_ok
         self.ignore_case = ignore_case
         self.ignore_space = ignore_space
         self.empty_ok_if = empty_ok_if
@@ -99,10 +100,12 @@ class Validator(object):
         """ Return a line of text describing allowed values"""
         raise NotImplementedError
 
-    def _set_attributes(self, empty_ok_template, ignore_case_template, ignore_space_template):
+    def _set_attributes(self, empty_ok_template, ignore_case_template, ignore_space_template, na_ok_template):
         # Override with template value if it was not set (default to None)
         if self.empty_ok is None:
             self.empty_ok = empty_ok_template
+        if self.na_ok is None:
+            self.na_ok = na_ok_template
         if self.ignore_case is None:
             self.ignore_case = ignore_case_template
         if self.ignore_space is None:

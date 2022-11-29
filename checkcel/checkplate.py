@@ -15,13 +15,14 @@ from copy import deepcopy
 
 class Checkplate(object):
     """ Base class for templates """
-    def __init__(self, validators={}, empty_ok=False, ignore_case=False, ignore_space=False, metadata=[], expected_rows=None):
+    def __init__(self, validators={}, empty_ok=False, ignore_case=False, ignore_space=False, metadata=[], expected_rows=None, na_ok=False):
         self.metadata = metadata
         self.logger = logs.logger
         self.validators = validators or getattr(self, "validators", {})
         self.logs = []
         # Will be overriden by validators config
         self.empty_ok = empty_ok
+        self.na_ok = na_ok
         self.ignore_case = ignore_case
         self.ignore_space = ignore_space
         self.expected_rows = expected_rows
@@ -69,6 +70,7 @@ class Checkplate(object):
         self.metadata = getattr(custom_class, 'metadata', [])
         self.validators = deepcopy(custom_class.validators)
         self.empty_ok = getattr(custom_class, 'empty_ok', False)
+        self.na_ok = getattr(custom_class, 'na_ok', False)
         self.ignore_case = getattr(custom_class, 'ignore_case', False)
         self.ignore_space = getattr(custom_class, 'ignore_space', False)
         self.expected_rows = getattr(custom_class, 'expected_rows', 0)
@@ -80,7 +82,7 @@ class Checkplate(object):
             )
 
         for key, validator in self.validators.items():
-            validator._set_attributes(self.empty_ok, self.ignore_case, self.ignore_space)
+            validator._set_attributes(self.empty_ok, self.ignore_case, self.ignore_space, self.na_ok)
         return self
 
     def load_from_json_file(self, file_path):
@@ -136,6 +138,7 @@ class Checkplate(object):
             return exits.UNAVAILABLE
 
         self.empty_ok = data.get("empty_ok", False)
+        self.na_ok = data.get("na_ok", False)
         self.ignore_case = data.get('ignore_case', False)
         self.ignore_space = data.get('ignore_space', False)
         self.expected_rows = data.get('expected_rows', 0)
