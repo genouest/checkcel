@@ -14,3 +14,14 @@ This changelog was started for release 0.0.3.
 - empty_ok_if key for validator
 - empty_ok_unless key for validator
 - readme key for validator
+- unique key for validator
+- expected_rows key for templates
+- logs parameters for templates
+
+### Fixed
+
+- Bug for setValidator when using number values
+
+### Changed
+
+- Better validation for integers

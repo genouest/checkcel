@@ -41,16 +41,16 @@ class Checkcel(Checkplate):
 
     def _log_debug_failures(self):
         for field_name, field_failure in self.failures.items():
-            self.logger.debug('\nFailure on field: "{}":'.format(field_name))
+            self.debug('\nFailure on field: "{}":'.format(field_name))
             for i, (row, errors) in enumerate(field_failure.items()):
-                self.logger.debug("  {}:{}".format(self.source, row))
+                self.debug("  {}:{}".format(self.source, row))
                 for error in errors:
-                    self.logger.debug("    {}".format(error))
+                    self.debug("    {}".format(error))
 
     def _log_validator_failures(self):
         for field_name, validator in self.validators.items():
             if validator.bad:
-                self.logger.error(
+                self.error(
                     "  {} failed {} time(s) ({:.1%}) on field: '{}'".format(
                         validator.__class__.__name__,
                         validator.fail_count,
@@ -64,22 +64,22 @@ class Checkcel(Checkplate):
                     data = validator.bad
                     wrong_terms = ", ".join(["'{}'".format(val) for val in data["invalid_set"]])
                     wrong_rows = ", ".join([str(val) for val in data["invalid_rows"]])
-                    self.logger.error(
+                    self.error(
                         "    Invalid fields: [{}] in rows: [{}]".format(wrong_terms, wrong_rows)
                     )
                 except TypeError as e:
                     raise e
 
     def _log_missing_validators(self):
-        self.logger.error("  Missing validators for:")
+        self.error("  Missing validators for:")
         self._log_missing(self.missing_validators)
 
     def _log_missing_fields(self):
-        self.logger.error("  Missing expected fields:")
+        self.error("  Missing expected fields:")
         self._log_missing(self.missing_fields)
 
     def _log_missing(self, missing_items):
-        self.logger.error(
+        self.error(
             "{}".format(
                 "\n".join(
                     ["    '{}': [],".format(field) for field in sorted(missing_items)]
@@ -88,7 +88,7 @@ class Checkcel(Checkplate):
         )
 
     def validate(self):
-        self.logger.info(
+        self.info(
             "\nValidating {}{}".format(self.__class__.__name__, "(source={})".format(self.source) if self.source else "")
         )
 
@@ -101,7 +101,7 @@ class Checkcel(Checkplate):
                 df = pandas.read_csv(self.source, sep=self.delimiter, skiprows=self.row)
 
             if len(df) == 0:
-                self.logger.info(
+                self.info(
                     "\033[1;33m" + "Source file has no data" + "\033[0m"
                 )
                 return False
@@ -115,7 +115,7 @@ class Checkcel(Checkplate):
         validator_set = set(self.validators)
         self.missing_validators = self.column_set - validator_set
         if self.missing_validators:
-            self.logger.info("\033[1;33m" + "Missing..." + "\033[0m")
+            self.info("\033[1;33m" + "Missing..." + "\033[0m")
             self._log_missing_validators()
 
             if not self.ignore_missing_validators:
@@ -123,20 +123,25 @@ class Checkcel(Checkplate):
 
         self.missing_fields = validator_set - self.column_set
         if self.missing_fields:
-            self.logger.info("\033[1;33m" + "Missing..." + "\033[0m")
+            self.info("\033[1;33m" + "Missing..." + "\033[0m")
             self._log_missing_fields()
             return False
+
+        if self.expected_rows:
+            if not self.expected_rows == len(df.index):
+                self.error("Length issue: Expecting {} row(s), found {}".format(self.expected_rows, len(df.index)))
+                return False
 
         # Might be a way to do it more efficiently..
         df.apply(lambda row: self._validate(row), axis=1)
 
         if self.failures:
-            self.logger.info("\033[0;31m" + "Failed" + "\033[0m")
+            self.info("\033[0;31m" + "Failed" + "\033[0m")
             self._log_debug_failures()
             self._log_validator_failures()
             return False
         else:
-            self.logger.info("\033[0;32m" + "Passed" + "\033[0m")
+            self.info("\033[0;32m" + "Passed" + "\033[0m")
             return True
 
     def _validate(self, row):

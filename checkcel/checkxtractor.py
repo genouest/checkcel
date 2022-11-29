@@ -1,4 +1,3 @@
-from checkcel import logs
 from openpyxl import load_workbook
 from openpyxl.worksheet.cell_range import CellRange
 from openpyxl.utils import get_column_letter
@@ -10,7 +9,6 @@ import yaml
 class Checkxtractor(object):
     """ Extract validation value from xlsx file (only) """
     def __init__(self, source, output, sheet=0, row=0, template_type="python"):
-        self.logger = logs.logger
         self.source = source
         self.output = output
         self.sheet = int(sheet)

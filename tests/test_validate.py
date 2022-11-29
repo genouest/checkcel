@@ -1,7 +1,30 @@
 import pandas as pd
 
 from checkcel import Checkcel
-from checkcel.validators import TextValidator, DateValidator, UniqueValidator, SetValidator, LinkedSetValidator, IntValidator, FloatValidator, GPSValidator, EmailValidator, TimeValidator, NoValidator
+from checkcel.validators import TextValidator, DateValidator, UniqueValidator, SetValidator, LinkedSetValidator, IntValidator, FloatValidator, GPSValidator, EmailValidator, TimeValidator, NoValidator, RegexValidator
+
+
+class TestCheckcelClass():
+
+    def test_invalid_rows_below(self):
+        data = {'my_column': ['myvalue', 'my_value2']}
+        validators = {'my_column': TextValidator()}
+        df = pd.DataFrame.from_dict(data)
+        validation = Checkcel(data=df, expected_rows=1, validators=validators)
+        val = validation.validate()
+        assert val is False
+        assert len(validation.logs) == 2
+        assert validation.logs[1] == "Error: Length issue: Expecting 1 row(s), found 2"
+
+    def test_invalid_rows_above(self):
+        data = {'my_column': ['myvalue']}
+        validators = {'my_column': TextValidator()}
+        df = pd.DataFrame.from_dict(data)
+        validation = Checkcel(data=df, expected_rows=2, validators=validators)
+        val = validation.validate()
+        assert val is False
+        assert len(validation.logs) == 2
+        assert validation.logs[1] == "Error: Length issue: Expecting 2 row(s), found 1"
 
 
 class TestCheckcelValidateText():
@@ -15,9 +38,18 @@ class TestCheckcelValidateText():
         assert val is False
         assert len(validation.failures['my_column']) == 1
 
+    def test_invalid_unique(self):
+        data = {'my_column': ['myvalue', 'myvalue']}
+        validators = {'my_column': TextValidator(unique=True)}
+        df = pd.DataFrame.from_dict(data)
+        validation = Checkcel(data=df, validators=validators)
+        val = validation.validate()
+        assert val is False
+        assert len(validation.failures['my_column']) == 1
+
     def test_valid_empty(self):
-        data = {'my_column': ['', 'myvalue']}
-        validators = {'my_column': TextValidator()}
+        data = {'my_column': ['', 'myvalue', '']}
+        validators = {'my_column': TextValidator(unique=True)}
         df = pd.DataFrame.from_dict(data)
         val = Checkcel(data=df, empty_ok=True, validators=validators)
         assert val.validate()
@@ -50,6 +82,15 @@ class TestCheckcelValidateFloat():
         assert val is False
         assert len(validation.failures['my_column']) == 1
 
+    def test_invalid_unique(self):
+        data = {'my_column': [1, 1]}
+        validators = {'my_column': FloatValidator(unique=True)}
+        df = pd.DataFrame.from_dict(data)
+        validation = Checkcel(data=df, validators=validators)
+        val = validation.validate()
+        assert val is False
+        assert len(validation.failures['my_column']) == 1
+
     def invalid_min(self):
         data = {'my_column': [6, 4]}
         validators = {'my_column': FloatValidator(min=5)}
@@ -78,8 +119,8 @@ class TestCheckcelValidateFloat():
         assert len(validation.failures['my_column']) == 2
 
     def test_valid_empty(self):
-        data = {'my_column': ['', 6]}
-        validators = {'my_column': FloatValidator()}
+        data = {'my_column': ['', 6, '']}
+        validators = {'my_column': FloatValidator(unique=True)}
         df = pd.DataFrame.from_dict(data)
         val = Checkcel(data=df, empty_ok=True, validators=validators)
         assert val.validate()
@@ -108,6 +149,15 @@ class TestCheckcelValidateInt():
         validators = {'my_column': IntValidator()}
         df = pd.DataFrame.from_dict(data)
         validation = Checkcel(data=df, empty_ok=False, validators=validators)
+        val = validation.validate()
+        assert val is False
+        assert len(validation.failures['my_column']) == 1
+
+    def test_invalid_unique(self):
+        data = {'my_column': [1, 1]}
+        validators = {'my_column': IntValidator(unique=True)}
+        df = pd.DataFrame.from_dict(data)
+        validation = Checkcel(data=df, validators=validators)
         val = validation.validate()
         assert val is False
         assert len(validation.failures['my_column']) == 1
@@ -149,8 +199,8 @@ class TestCheckcelValidateInt():
         assert len(validation.failures['my_column']) == 2
 
     def test_valid_empty(self):
-        data = {'my_column': ['', 6]}
-        validators = {'my_column': IntValidator()}
+        data = {'my_column': ['', 6, '']}
+        validators = {'my_column': IntValidator(unique=True)}
         df = pd.DataFrame.from_dict(data)
         val = Checkcel(data=df, empty_ok=True, validators=validators)
         assert val.validate()
@@ -183,9 +233,18 @@ class TestCheckcelValidateMail():
         assert val is False
         assert len(validation.failures['my_column']) == 1
 
+    def test_invalid_unique(self):
+        data = {'my_column': ['validemail@emailprovider.com', 'validemail@emailprovider.com']}
+        validators = {'my_column': EmailValidator(unique=True)}
+        df = pd.DataFrame.from_dict(data)
+        validation = Checkcel(data=df, empty_ok=False, validators=validators)
+        val = validation.validate()
+        assert val is False
+        assert len(validation.failures['my_column']) == 1
+
     def test_valid_empty(self):
-        data = {'my_column': ['', 'validemail@emailprovider.com']}
-        validators = {'my_column': EmailValidator()}
+        data = {'my_column': ['', 'validemail@emailprovider.com', '']}
+        validators = {'my_column': EmailValidator(unique=True)}
         df = pd.DataFrame.from_dict(data)
         val = Checkcel(data=df, empty_ok=True, validators=validators)
         assert val.validate()
@@ -236,9 +295,18 @@ class TestCheckcelValidateDate():
         assert val is False
         assert len(validation.failures['my_column']) == 1
 
+    def test_invalid_unique(self):
+        data = {'my_column': ['01/01/1970', '01/01/1970']}
+        validators = {'my_column': DateValidator(unique=True)}
+        df = pd.DataFrame.from_dict(data)
+        validation = Checkcel(data=df, empty_ok=False, validators=validators)
+        val = validation.validate()
+        assert val is False
+        assert len(validation.failures['my_column']) == 1
+
     def test_valid_empty(self):
-        data = {'my_column': ['', '01/01/1970']}
-        validators = {'my_column': DateValidator()}
+        data = {'my_column': ['', '01/01/1970', '']}
+        validators = {'my_column': DateValidator(unique=True)}
         df = pd.DataFrame.from_dict(data)
         val = Checkcel(data=df, empty_ok=True, validators=validators)
         assert val.validate()
@@ -289,9 +357,18 @@ class TestCheckcelValidateTime():
         assert val is False
         assert len(validation.failures['my_column']) == 1
 
+    def test_invalid_unique(self):
+        data = {'my_column': ['13h10', '13h10']}
+        validators = {'my_column': TimeValidator(unique=True)}
+        df = pd.DataFrame.from_dict(data)
+        validation = Checkcel(data=df, empty_ok=False, validators=validators)
+        val = validation.validate()
+        assert val is False
+        assert len(validation.failures['my_column']) == 1
+
     def test_valid_empty(self):
-        data = {'my_column': ['', '13h10']}
-        validators = {'my_column': TimeValidator()}
+        data = {'my_column': ['', '13h10', '']}
+        validators = {'my_column': TimeValidator(unique=True)}
         df = pd.DataFrame.from_dict(data)
         val = Checkcel(data=df, empty_ok=True, validators=validators)
         assert val.validate()
@@ -375,9 +452,18 @@ class TestCheckcelValidateSet():
         assert val is False
         assert len(validation.failures['my_column']) == 1
 
+    def test_invalid_unique(self):
+        data = {'my_column': ['valid_value', 'valid_value']}
+        validators = {'my_column': SetValidator(unique=True, valid_values=["valid_value"])}
+        df = pd.DataFrame.from_dict(data)
+        validation = Checkcel(data=df, empty_ok=False, validators=validators)
+        val = validation.validate()
+        assert val is False
+        assert len(validation.failures['my_column']) == 1
+
     def test_valid_empty(self):
-        data = {'my_column': ['', 'valid_value']}
-        validators = {'my_column': SetValidator(valid_values=["valid_value"])}
+        data = {'my_column': ['', 'valid_value', '']}
+        validators = {'my_column': SetValidator(unique=True, valid_values=["valid_value"])}
         df = pd.DataFrame.from_dict(data)
         val = Checkcel(data=df, empty_ok=True, validators=validators)
         assert val.validate()
@@ -416,11 +502,23 @@ class TestCheckcelValidateLinkedSet():
         assert val is False
         assert len(validation.failures['another_column']) == 1
 
-    def test_valid_empty(self):
-        data = {'my_column': ['value_1', 'value_2', 'value_2'], "another_column": ["valid_value", "another_valid_value", ""]}
+    def test_invalid_unique(self):
+        data = {'my_column': ['value_1', 'value_2', 'value2'], "another_column": ["valid_value", "another_valid_value", "another_valid_value"]}
         validators = {
             'my_column': SetValidator(valid_values=['value_1', 'value_2']),
-            'another_column': LinkedSetValidator(linked_column="my_column", valid_values={"value_1": ["valid_value"], "value_2": ["another_valid_value"]})
+            'another_column': LinkedSetValidator(unique=True, linked_column="my_column", valid_values={"value_1": ["valid_value"], "value_2": ["another_valid_value"]})
+        }
+        df = pd.DataFrame.from_dict(data)
+        validation = Checkcel(data=df, empty_ok=False, validators=validators)
+        val = validation.validate()
+        assert val is False
+        assert len(validation.failures['another_column']) == 1
+
+    def test_valid_empty(self):
+        data = {'my_column': ['value_1', 'value_2', 'value_2', 'value_2'], "another_column": ["valid_value", "another_valid_value", "", ""]}
+        validators = {
+            'my_column': SetValidator(valid_values=['value_1', 'value_2']),
+            'another_column': LinkedSetValidator(unique=True, linked_column="my_column", valid_values={"value_1": ["valid_value"], "value_2": ["another_valid_value"]})
         }
         df = pd.DataFrame.from_dict(data)
         val = Checkcel(data=df, empty_ok=True, validators=validators)
@@ -486,9 +584,18 @@ class TestCheckcelValidateGPS():
         assert val is False
         assert len(validation.failures['my_column']) == 1
 
+    def test_invalid_unique(self):
+        data = {'my_column': ['46.174181N 14.801100E', '46.174181N 14.801100E']}
+        validators = {'my_column': GPSValidator(unique=True)}
+        df = pd.DataFrame.from_dict(data)
+        validation = Checkcel(data=df, empty_ok=False, validators=validators)
+        val = validation.validate()
+        assert val is False
+        assert len(validation.failures['my_column']) == 1
+
     def test_valid_empty(self):
-        data = {'my_column': ['', '46.174181N 14.801100E']}
-        validators = {'my_column': GPSValidator()}
+        data = {'my_column': ['', '46.174181N 14.801100E', '']}
+        validators = {'my_column': GPSValidator(unique=True)}
         df = pd.DataFrame.from_dict(data)
         val = Checkcel(data=df, empty_ok=True, validators=validators)
         assert val.validate()
@@ -496,6 +603,50 @@ class TestCheckcelValidateGPS():
     def test_valid(self):
         data = {'my_column': ['46.174181N 14.801100E', '+87.174181 -140.801100E']}
         validators = {'my_column': GPSValidator()}
+        df = pd.DataFrame.from_dict(data)
+        val = Checkcel(data=df, validators=validators)
+        assert val.validate()
+
+
+class TestCheckcelValidateRegex():
+
+    def test_invalid(self):
+        data = {'my_column': ['ABC', 'AFX123']}
+        validators = {'my_column': RegexValidator(regex="AFX.*")}
+        df = pd.DataFrame.from_dict(data)
+        validation = Checkcel(data=df, empty_ok=False, validators=validators)
+        val = validation.validate()
+        assert val is False
+        assert len(validation.failures['my_column']) == 1
+
+    def test_invalid_empty(self):
+        data = {'my_column': ['', 'AFX123']}
+        validators = {'my_column': RegexValidator(regex="AFX.*")}
+        df = pd.DataFrame.from_dict(data)
+        validation = Checkcel(data=df, empty_ok=False, validators=validators)
+        val = validation.validate()
+        assert val is False
+        assert len(validation.failures['my_column']) == 1
+
+    def test_invalid_unique(self):
+        data = {'my_column': ['AFX123', 'AFX123']}
+        validators = {'my_column': RegexValidator(unique=True, regex="AFX.*")}
+        df = pd.DataFrame.from_dict(data)
+        validation = Checkcel(data=df, validators=validators)
+        val = validation.validate()
+        assert val is False
+        assert len(validation.failures['my_column']) == 1
+
+    def test_valid_empty(self):
+        data = {'my_column': ['', 'AFX123', '']}
+        validators = {'my_column': RegexValidator(unique=True, regex="AFX.*")}
+        df = pd.DataFrame.from_dict(data)
+        val = Checkcel(data=df, empty_ok=True, validators=validators)
+        assert val.validate()
+
+    def test_valid(self):
+        data = {'my_column': ['AFX123', 'AFX456']}
+        validators = {'my_column': RegexValidator(regex="AFX.*")}
         df = pd.DataFrame.from_dict(data)
         val = Checkcel(data=df, validators=validators)
         assert val.validate()

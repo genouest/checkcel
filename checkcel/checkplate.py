@@ -15,17 +15,35 @@ from copy import deepcopy
 
 class Checkplate(object):
     """ Base class for templates """
-    def __init__(self, validators={}, empty_ok=False, ignore_case=False, ignore_space=False, metadata=[]):
+    def __init__(self, validators={}, empty_ok=False, ignore_case=False, ignore_space=False, metadata=[], expected_rows=None):
         self.metadata = metadata
         self.logger = logs.logger
         self.validators = validators or getattr(self, "validators", {})
+        self.logs = []
         # Will be overriden by validators config
         self.empty_ok = empty_ok
         self.ignore_case = ignore_case
         self.ignore_space = ignore_space
+        self.expected_rows = expected_rows
         # self.trim_values = False
         for validator in self.validators.values():
             validator._set_attributes(self.empty_ok, self.ignore_case, self.ignore_space)
+
+    def debug(self, message):
+        self.logger.debug(message)
+        self.logs.append("Debug: {}".format(message))
+
+    def info(self, message):
+        self.logger.info(message)
+        self.logs.append("Info: {}".format(message))
+
+    def warn(self, message):
+        self.logger.warn(message)
+        self.logs.append("Warning: {}".format(message))
+
+    def error(self, message):
+        self.logger.error(message)
+        self.logs.append("Error: {}".format(message))
 
     def load_from_python_file(self, file_path):
         # Limit conflicts in file name
@@ -44,7 +62,7 @@ class Checkplate(object):
                 custom_class = list(filtered_classes.values())[0]
 
         if not custom_class:
-            self.logger.error(
+            self.error(
                 "Could not find a subclass of Checkplate in the provided file."
             )
             return exits.UNAVAILABLE
@@ -53,13 +71,21 @@ class Checkplate(object):
         self.empty_ok = getattr(custom_class, 'empty_ok', False)
         self.ignore_case = getattr(custom_class, 'ignore_case', False)
         self.ignore_space = getattr(custom_class, 'ignore_space', False)
+        self.expected_rows = getattr(custom_class, 'expected_rows', 0)
+        try:
+            self.expected_rows = int(self.expected_rows)
+        except ValueError:
+            self.error(
+                "Malformed Checkcel template: expected_rows is not an integer"
+            )
+
         for key, validator in self.validators.items():
             validator._set_attributes(self.empty_ok, self.ignore_case, self.ignore_space)
         return self
 
     def load_from_json_file(self, file_path):
         if not os.path.isfile(file_path):
-            self.logger.error(
+            self.error(
                 "Could not find a file at path {}".format(file_path)
             )
             return exits.NOINPUT
@@ -71,7 +97,7 @@ class Checkplate(object):
 
     def load_from_yaml_file(self, file_path):
         if not os.path.isfile(file_path):
-            self.logger.error(
+            self.error(
                 "Could not find a file at path {}".format(file_path)
             )
             return exits.NOINPUT
@@ -80,7 +106,7 @@ class Checkplate(object):
             try:
                 data = yaml.safe_load(f)
             except yaml.YAMLError:
-                self.logger.error(
+                self.error(
                     "File {} is not a valid yaml file".format(file_path)
                 )
                 return exits.UNAVAILABLE
@@ -104,7 +130,7 @@ class Checkplate(object):
 
     def _load_from_dict(self, data):
         if 'validators' not in data or not isinstance(data['validators'], list):
-            self.logger.error(
+            self.error(
                 "Could not find a list of validators in data"
             )
             return exits.UNAVAILABLE
@@ -112,13 +138,21 @@ class Checkplate(object):
         self.empty_ok = data.get("empty_ok", False)
         self.ignore_case = data.get('ignore_case', False)
         self.ignore_space = data.get('ignore_space', False)
+        self.expected_rows = data.get('expected_rows', 0)
+        try:
+            self.expected_rows = int(self.expected_rows)
+        except ValueError:
+            self.error(
+                "Malformed Checkcel template: expected_rows is not an integer"
+            )
+
         validators_list = []
         self.validators = {}
         self.metadata = data.get('metadata', [])
 
         for validator in data['validators']:
             if 'type' not in validator or 'name' not in validator:
-                self.logger.error(
+                self.error(
                     "Malformed Checkcel Validator. Require both 'type' and 'name' key"
                 )
                 return exits.UNAVAILABLE
@@ -129,7 +163,7 @@ class Checkplate(object):
                 val = validator_class(**options)
                 val._set_attributes(self.empty_ok, self.ignore_case, self.ignore_space)
             except AttributeError:
-                self.logger.error(
+                self.error(
                     "{} is not a valid Checkcel Validator".format(validator['type'])
                 )
                 return exits.UNAVAILABLE

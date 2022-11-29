@@ -18,7 +18,7 @@ from checkcel import logs
 class Validator(object):
     """ Generic Validator class """
 
-    def __init__(self, empty_ok=None, ignore_case=None, ignore_space=None, empty_ok_if=None, empty_ok_unless=None, readme=None):
+    def __init__(self, empty_ok=None, ignore_case=None, ignore_space=None, empty_ok_if=None, empty_ok_unless=None, readme=None, unique=False):
         self.logger = logs.logger
         self.invalid_dict = defaultdict(set)
         self.fail_count = 0
@@ -29,6 +29,8 @@ class Validator(object):
         self.empty_ok_unless = empty_ok_unless
         self.empty_check = True if not (empty_ok_if or empty_ok_unless) else False
         self.readme = readme
+        self.unique = unique
+        self.unique_values = set()
 
         if empty_ok_if:
             if not (isinstance(empty_ok_if, dict) or isinstance(empty_ok_if, list) or isinstance(empty_ok_if, str)):
@@ -144,17 +146,29 @@ class TextValidator(Validator):
                 "Field cannot be empty"
             )
 
+        if field and self.unique:
+            if field in self.unique_values:
+                raise ValidationException("'{}' is already in the column".format(field))
+            self.unique_values.add(field)
+
     @property
     def bad(self):
         return self.invalid_dict
 
     def generate(self, column):
-        return None
+        if self.unique:
+            params = {"type": "custom", "allow_blank": self.empty_ok}
+            internal_value = "${0}:${0},{0}2".format(column)
+            params["formula1"] = '=COUNTIF({})<2'.format(internal_value)
+            dv = DataValidation(**params)
+            dv.error = 'Value must be unique'
+            dv.add("{}2:{}1048576".format(column, column))
+            return dv
 
     def describe(self, column_name):
         if self.readme:
             column_name += " ({})".format(self.readme)
-        return "{} : Free text {}".format(column_name, "(required)" if not self.empty_ok else "")
+        return "{} : Free text {}{}".format(column_name, "(required)" if not self.empty_ok else "", " (unique)" if self.unique else "")
 
 
 class CastValidator(Validator):
@@ -174,7 +188,10 @@ class CastValidator(Validator):
 
         try:
             if field or not self._can_be_empty(row):
-                field = self.cast(field)
+                field = float(field)
+                if self.type == "whole" and not (field).is_integer():
+                    raise ValueError
+
                 if self.min is not None and field < self.min:
                     self.invalid_dict["invalid_set"].add(field)
                     self.invalid_dict["invalid_rows"].add(row_number)
@@ -183,6 +200,11 @@ class CastValidator(Validator):
                     self.invalid_dict["invalid_set"].add(field)
                     self.invalid_dict["invalid_rows"].add(row_number)
                     raise ValidationException("{} is above max value {}".format(field, self.max))
+
+                if field and self.unique:
+                    if field in self.unique_values:
+                        raise ValidationException("'{}' is already in the column".format(field))
+                    self.unique_values.add(field)
 
         except ValueError as e:
             self.invalid_dict["invalid_set"].add(field)
@@ -194,7 +216,7 @@ class CastValidator(Validator):
         return self.invalid_dict
 
     def generate(self, column):
-        params = {"type": self.type}
+        params = {"type": self.type, "allow_blank": self.empty_ok}
         if (self.min is not None and self.max is not None):
             params["formula1"] = self.min
             params["formula2"] = self.max
@@ -223,6 +245,9 @@ class CastValidator(Validator):
 
         if not self.empty_ok:
             text += " (required)"
+        if self.unique:
+            text += " (unique)"
+
         return text
 
 
@@ -231,7 +256,6 @@ class FloatValidator(CastValidator):
 
     def __init__(self, **kwargs):
         super(FloatValidator, self).__init__(**kwargs)
-        self.cast = float
         self.type = "decimal"
 
 
@@ -240,7 +264,6 @@ class IntValidator(CastValidator):
 
     def __init__(self, **kwargs):
         super(IntValidator, self).__init__(**kwargs)
-        self.cast = int
         self.type = "whole"
 
 
@@ -249,8 +272,8 @@ class SetValidator(Validator):
 
     def __init__(self, valid_values=set(), **kwargs):
         super(SetValidator, self).__init__(**kwargs)
-        self.ordered_values = valid_values
-        self.valid_values = set(valid_values)
+        self.ordered_values = [str(val) for val in valid_values]
+        self.valid_values = set([str(val) for val in valid_values])
         if self.empty_ok:
             self.valid_values.add("")
 
@@ -276,6 +299,10 @@ class SetValidator(Validator):
             raise ValidationException(
                 "'{}' is invalid".format(field)
             )
+        if field and self.unique:
+            if field in self.unique_values:
+                raise ValidationException("'{}' is already in the column".format(field))
+            self.unique_values.add(field)
 
     def _set_attributes(self, empty_ok_template, ignore_case_template, ignore_space_template):
         # Override with template value if it was not set (default to None)
@@ -299,7 +326,7 @@ class SetValidator(Validator):
     def generate(self, column, column_name="", additional_column=None, additional_worksheet=None):
         # If total length > 256 : need to use cells on another sheet
         if additional_column and additional_worksheet:
-            params = {"type": "list"}
+            params = {"type": "list", "allow_blank": self.empty_ok}
             cell = additional_worksheet.cell(column=column_index_from_string(additional_column), row=1, value=column_name)
             cell.font = Font(color="FF0000", bold=True)
             row = 2
@@ -308,7 +335,7 @@ class SetValidator(Validator):
                 row += 1
             params["formula1"] = "{}!${}$2:${}${}".format(quote_sheetname(additional_worksheet.title), additional_column, additional_column, row - 1)
         else:
-            params = {"type": "list"}
+            params = {"type": "list", "allow_blank": self.empty_ok}
             values = ",".join(self.ordered_values)
             params["formula1"] = '"{}"'.format(values)
         dv = DataValidation(**params)
@@ -318,7 +345,7 @@ class SetValidator(Validator):
     def describe(self, column_name):
         if self.readme:
             column_name += " ({})".format(self.readme)
-        return "{} : (Allowed values : {}) {}".format(column_name, ", ".join(self.ordered_values), "(required)" if not self.empty_ok else "")
+        return "{} : (Allowed values : {}) {}{}".format(column_name, ", ".join(self.ordered_values), "(required)" if not self.empty_ok else "", "(unique)" if self.unique else "")
 
 
 class LinkedSetValidator(Validator):
@@ -361,6 +388,11 @@ class LinkedSetValidator(Validator):
             self.invalid_dict["invalid_rows"].add(row_number)
             raise ValidationException("Value {} is not in allowed values".format(field))
 
+        if field and self.unique:
+            if field in self.unique_values:
+                raise ValidationException("'{}' is already in the column".format(field))
+            self.unique_values.add(field)
+
     @property
     def bad(self):
         return self.invalid_dict
@@ -369,7 +401,7 @@ class LinkedSetValidator(Validator):
         if self.linked_column not in set_columns:
             # TODO raise warning
             return None
-        params = {"type": "list"}
+        params = {"type": "list", "allow_blank": self.empty_ok}
         additional_worksheet.cell(column=column_index_from_string(additional_column), row=1, value=column_name).font = Font(color="FF0000", bold=True)
         row = 2
         row_dict = {}
@@ -392,7 +424,7 @@ class LinkedSetValidator(Validator):
     def describe(self, column_name):
         if self.readme:
             column_name += " ({})".format(self.readme)
-        return "{} : Linked values to column {} {}".format(column_name, self.linked_column, "(required)" if not self.empty_ok else "")
+        return "{} : Linked values to column {} {}{}".format(column_name, self.linked_column, "(required)" if not self.empty_ok else "", "(unique)" if self.unique else "")
 
 
 class DateValidator(Validator):
@@ -440,6 +472,11 @@ class DateValidator(Validator):
                     self.invalid_dict["invalid_rows"].add(row_number)
                     raise ValidationException("Value {} is not after {}".format(field, self.after))
 
+                if field and self.unique:
+                    if field in self.unique_values:
+                        raise ValidationException("'{}' is already in the column".format(field))
+                    self.unique_values.add(field)
+
         except parser.ParserError as e:
             self.invalid_dict["invalid_set"].add(field)
             self.invalid_dict["invalid_rows"].add(row_number)
@@ -451,7 +488,7 @@ class DateValidator(Validator):
 
     def generate(self, column, additional_column=None, additional_worksheet=None):
         # GreaterThanOrEqual for validity with ODS.
-        params = {"type": "date"}
+        params = {"type": "date", "allow_blank": self.empty_ok}
         if (self.before is not None and self.after is not None):
             params["formula1"] = parser.parse(self.after).strftime("%Y/%m/%d")
             params["formula2"] = parser.parse(self.before).strftime("%Y/%m/%d")
@@ -461,6 +498,9 @@ class DateValidator(Validator):
             params["operator"] = "lessThanOrEqual"
         elif self.after is not None:
             params["formula1"] = parser.parse(self.after).strftime("%Y/%m/%d")
+            params["operator"] = "greaterThanOrEqual"
+        else:
+            params["formula1"] = "01/01/1900"
             params["operator"] = "greaterThanOrEqual"
 
         dv = DataValidation(**params)
@@ -480,6 +520,8 @@ class DateValidator(Validator):
 
         if not self.empty_ok:
             text += " (required)"
+        if self.unique:
+            text += " (unique)"
 
         return text
 
@@ -527,6 +569,11 @@ class TimeValidator(Validator):
                     self.invalid_dict["invalid_rows"].add(row_number)
                     raise ValidationException("Value {} is not after {}".format(field, self.after))
 
+                if field and self.unique:
+                    if field in self.unique_values:
+                        raise ValidationException("'{}' is already in the column".format(field))
+                    self.unique_values.add(field)
+
         except parser.ParserError as e:
             self.invalid_dict["invalid_set"].add(field)
             self.invalid_dict["invalid_rows"].add(row_number)
@@ -539,7 +586,7 @@ class TimeValidator(Validator):
     def generate(self, column, additional_column=None, additional_worksheet=None):
         # GreaterThanOrEqual for validity with ODS.
 
-        params = {"type": "time"}
+        params = {"type": "time", "allow_blank": self.empty_ok}
         if (self.before is not None and self.after is not None):
             params["formula1"] = parser.parse(self.after).strftime("%H:%M:%S")
             params["formula2"] = parser.parse(self.before).strftime("%H:%M:%S")
@@ -568,6 +615,8 @@ class TimeValidator(Validator):
 
         if not self.empty_ok:
             text += " (required)"
+        if self.unique:
+            text += " (unique)"
 
         return text
 
@@ -591,13 +640,17 @@ class EmailValidator(Validator):
                 self.invalid_dict["invalid_set"].add(field)
                 self.invalid_dict["invalid_rows"].add(row_number)
                 raise ValidationException(e)
+            if self.unique:
+                if field in self.unique_values:
+                    raise ValidationException("'{}' is already in the column".format(field))
+                self.unique_values.add(field)
 
     @property
     def bad(self):
         return self.invalid_dict
 
     def generate(self, column, ontology_column=None):
-        params = {"type": "custom"}
+        params = {"type": "custom", "allow_blank": self.empty_ok}
         params["formula1"] = '=ISNUMBER(MATCH("*@*.?*",{}2,0))'.format(column)
         dv = DataValidation(**params)
         dv.error = 'Value must be an email'
@@ -607,7 +660,7 @@ class EmailValidator(Validator):
     def describe(self, column_name):
         if self.readme:
             column_name += " ({})".format(self.readme)
-        return "{} : Email {}".format(column_name, "(required)" if not self.empty_ok else "")
+        return "{} : Email {}{}".format(column_name, "(required)" if not self.empty_ok else "", "(unique)" if self.unique else "")
 
 
 class OntologyValidator(Validator):
@@ -647,6 +700,10 @@ class OntologyValidator(Validator):
                 self.invalid_dict["invalid_rows"].add(row_number)
                 raise ValidationException("{} is not an ontological term".format(field))
             self.validated_terms.add(field)
+        if field and self.unique:
+            if field in self.unique_values:
+                raise ValidationException("'{}' is already in the column".format(field))
+            self.unique_values.add(field)
 
     @property
     def bad(self):
@@ -661,7 +718,7 @@ class OntologyValidator(Validator):
             additional_worksheet.cell(column=column_index_from_string(additional_column), row=row, value=term)
             row += 1
 
-        params = {"type": "list"}
+        params = {"type": "list", "allow_blank": self.empty_ok}
         params["formula1"] = "{}!${}$2:${}${}".format(quote_sheetname(additional_worksheet.title), additional_column, additional_column, row - 1)
         dv = DataValidation(**params)
         dv.error = 'Value must be an ontological term'
@@ -676,6 +733,8 @@ class OntologyValidator(Validator):
             text += " Root term is : {}".format(self.root_term)
         if not self.empty_ok:
             text += " (required)"
+        if self.unique:
+            text += " (unique)"
         return text
 
     def _validate_ontological_term(self, term, return_uri=False):
@@ -788,7 +847,7 @@ class UniqueValidator(Validator):
         if self.unique_with and not all([val in column_dict for val in self.unique_with]):
             raise BadValidatorException("Using unique_with, but the related column was not defined before")
 
-        params = {"type": "custom"}
+        params = {"type": "custom", "allow_blank": self.empty_ok}
         internal_value = "${0}:${0},{0}2".format(column)
         if self.unique_with:
             for col in self.unique_with:
@@ -854,6 +913,11 @@ class VocabulaireOuvertValidator(Validator):
                 raise ValidationException("{} is not an ontological term".format(field))
             self.validated_terms.add(field)
 
+        if field and self.unique:
+            if field in self.unique_values:
+                raise ValidationException("'{}' is already in the column".format(field))
+            self.unique_values.add(field)
+
     @property
     def bad(self):
         return self.invalid_dict
@@ -882,7 +946,7 @@ class VocabulaireOuvertValidator(Validator):
             additional_worksheet.cell(column=column_index_from_string(additional_column), row=row, value=term)
             row += 1
 
-        params = {"type": "list"}
+        params = {"type": "list", "allow_blank": self.empty_ok}
         params["formula1"] = "{}!${}$2:${}${}".format(quote_sheetname(additional_worksheet.title), additional_column, additional_column, row - 1)
         dv = DataValidation(**params)
         dv.error = 'Value must be from Vocabulaires ouverts'
@@ -897,6 +961,8 @@ class VocabulaireOuvertValidator(Validator):
             text += " Root term is : {}".format(self.root_term)
         if not self.empty_ok:
             text += " (required)"
+        if self.unique:
+            text += " (unique)"
         return text
 
     def _validate_vo_term(self, field, return_uri=False):
@@ -976,6 +1042,11 @@ class RegexValidator(Validator):
             self.invalid_dict["invalid_rows"].add(row_number)
             raise ValidationException("{} does not match regex {}".format(field, self.regex))
 
+        if field and self.unique:
+            if field in self.unique_values:
+                raise ValidationException("'{}' is already in the column".format(field))
+            self.unique_values.add(field)
+
     @property
     def bad(self):
         return self.invalid_dict
@@ -983,6 +1054,14 @@ class RegexValidator(Validator):
     def generate(self, column):
         # Difficult to use regex in Excel without a VBA macro
         if not self.excel_formula:
+            if self.unique:
+                params = {"type": "custom", "allow_blank": self.empty_ok}
+                internal_value = "${0}:${0},{0}2".format(column)
+                params["formula1"] = '=COUNTIF({})<2'.format(internal_value)
+                dv = DataValidation(**params)
+                dv.error = 'Value must be unique'
+                dv.add("{}2:{}1048576".format(column, column))
+                return dv
             self.logger.warning(
                 "Warning: RegexValidator does not generate a validated column"
             )
@@ -1001,6 +1080,8 @@ class RegexValidator(Validator):
         text = "{} : Term matching the regex {}.".format(column_name, self.regex)
         if not self.empty_ok:
             text += " (required)"
+        if self.unique:
+            text += " (unique)"
         return text
 
 
@@ -1050,6 +1131,10 @@ class GPSValidator(Validator):
             self.invalid_dict["invalid_set"].add(field)
             self.invalid_dict["invalid_rows"].add(row_number)
             raise ValidationException("{} is not a valid GPS coordinate")
+        if field and self.unique:
+            if field in self.unique_values:
+                raise ValidationException("'{}' is already in the column".format(field))
+            self.unique_values.add(field)
 
     @property
     def bad(self):
@@ -1057,6 +1142,14 @@ class GPSValidator(Validator):
 
     def generate(self, column):
         # Difficult to use regex in Excel without a VBA macro
+        if self.unique:
+            params = {"type": "custom", "allow_blank": self.empty_ok}
+            internal_value = "${0}:${0},{0}2".format(column)
+            params["formula1"] = '=COUNTIF({})<2'.format(internal_value)
+            dv = DataValidation(**params)
+            dv.error = 'Value must be unique'
+            dv.add("{}2:{}1048576".format(column, column))
+            return dv
         self.logger.warning(
             "Warning: GPSValidator does not generate a validated column"
         )
@@ -1068,4 +1161,6 @@ class GPSValidator(Validator):
         text = "{} : GPS coordinate".format(column_name)
         if not self.empty_ok:
             text += " (required)"
+        if self.unique:
+            text += " (unique)"
         return text
