@@ -167,6 +167,9 @@ class TextValidator(Validator):
         if not self.empty_check:
             self._precheck_empty_ok_if(row)
 
+        if self.na_ok and field.lower() in ['na' 'n/a']:
+            return
+
         if not field and not self._can_be_empty(row):
             raise ValidationException(
                 "Field cannot be empty"
@@ -214,6 +217,9 @@ class CastValidator(Validator):
 
         try:
             if field or not self._can_be_empty(row):
+                if self.na_ok and field.lower() in ['na' 'n/a']:
+                    return
+
                 field = float(field)
                 if self.type == "whole" and not (field).is_integer():
                     raise ValueError
@@ -325,6 +331,8 @@ class SetValidator(Validator):
             raise ValidationException(
                 "'{}' is invalid".format(field)
             )
+        if self.na_ok and field.lower() in ['na' 'n/a']:
+            return
 
         if field not in self.valid_values:
             self.invalid_dict["invalid_set"].add(field)
@@ -408,6 +416,9 @@ class LinkedSetValidator(Validator):
             self._precheck_unique_with(row)
 
         if not field and self.empty_ok:
+            return
+
+        if self.na_ok and field.lower() in ['na' 'n/a']:
             return
 
         related_column_value = row[self.linked_column]
@@ -494,6 +505,8 @@ class DateValidator(Validator):
 
         try:
             if field or not self._can_be_empty(row):
+                if self.na_ok and field.lower() in ['na' 'n/a']:
+                    return
                 # Pandas auto convert fields into dates (ignoring the parse_dates=False)
                 field = str(field)
                 date = parser.parse(field, dayfirst=self.day_first).date()
@@ -591,6 +604,8 @@ class TimeValidator(Validator):
             field = field.strip()
         try:
             if field or not self._can_be_empty(row):
+                if self.na_ok and field.lower() in ['na' 'n/a']:
+                    return
                 # Pandas auto convert fields into dates (ignoring the parse_dates=False)
                 field = str(field)
                 time = parser.parse(field).time()
@@ -670,6 +685,8 @@ class EmailValidator(Validator):
         if self.ignore_space:
             field = field.strip()
         if field or not self._can_be_empty(row):
+            if self.na_ok and field.lower() in ['na' 'n/a']:
+                return
             try:
                 validate_email(field)
             except EmailNotValidError as e:
@@ -723,6 +740,9 @@ class OntologyValidator(Validator):
             field = field.strip()
 
         if field == "" and self._can_be_empty(row):
+            return
+
+        if self.na_ok and field.lower() in ['na' 'n/a']:
             return
 
         if field in self.invalid_dict["invalid_set"]:
@@ -857,6 +877,9 @@ class UniqueValidator(Validator):
                     "Field cannot be empty"
                 )
 
+        if self.na_ok and field.lower() in ['na' 'n/a']:
+            return
+
         if self.unique_with and not self.unique_check:
             self._precheck_unique_with(row)
 
@@ -935,6 +958,9 @@ class VocabulaireOuvertValidator(Validator):
             field = field.strip()
 
         if field == "" and self._can_be_empty(row):
+            return
+
+        if self.na_ok and field.lower() in ['na' 'n/a']:
             return
 
         if field in self.invalid_dict["invalid_set"]:
@@ -1072,6 +1098,9 @@ class RegexValidator(Validator):
         if field == "" and self._can_be_empty(row):
             return
 
+        if self.na_ok and field.lower() in ['na' 'n/a']:
+            return
+
         matches = re.findall(self.regex, field)
         if not len(matches) == 1:
             self.invalid_dict["invalid_set"].add(field)
@@ -1145,6 +1174,9 @@ class GPSValidator(Validator):
             field = field.strip()
 
         if field == "" and self._can_be_empty(row):
+            return
+
+        if self.na_ok and field.lower() in ['na' 'n/a']:
             return
 
         if self.format == "DD":
