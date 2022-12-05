@@ -100,7 +100,7 @@ class Validator(object):
         """ Return a line of text describing allowed values"""
         raise NotImplementedError
 
-    def _set_attributes(self, empty_ok_template, ignore_case_template, ignore_space_template, na_ok_template):
+    def _set_attributes(self, empty_ok_template=False, ignore_case_template=False, ignore_space_template=False, na_ok_template=False):
         # Override with template value if it was not set (default to None)
         if self.empty_ok is None:
             self.empty_ok = empty_ok_template
