@@ -776,6 +776,11 @@ class OntologyValidator(Validator):
 
     def generate(self, column, column_name, additional_column, additional_worksheet):
         terms = self._get_ontological_terms()
+        if self.empty_ok:
+            terms.add("")
+        if self.na_ok:
+            terms.add("N/A")
+
         cell = additional_worksheet.cell(column=column_index_from_string(additional_column), row=1, value=self.ontology)
         cell.font = Font(color="FF0000", bold=True)
         row = 2
@@ -864,6 +869,8 @@ class UniqueValidator(Validator):
         self.unique_values = set()
         self.unique_with = unique_with
         self.unique_check = False
+        # Disable this value just in case
+        self.unique = False
 
     def _precheck_unique_with(self, row):
         extra = set(self.unique_with) - set(row.keys())
@@ -920,7 +927,13 @@ class UniqueValidator(Validator):
         if self.unique_with:
             for col in self.unique_with:
                 internal_value += ",${0}:${0},{0}2".format(column_dict[col])
-        params["formula1"] = '=COUNTIF({})<2'.format(internal_value)
+
+        formulas = []
+
+        formulas.append('=COUNTIF({})<2'.format(internal_value))
+        formula = self._format_formula(formulas)
+
+        params["formula1"] = formula
         dv = DataValidation(**params)
         dv.error = 'Value must be unique'
         dv.add("{}2:{}1048576".format(column, column))
@@ -1003,6 +1016,10 @@ class VocabulaireOuvertValidator(Validator):
             return None
 
         terms = self._get_vo_terms()
+        if self.empty_ok:
+            terms.add("")
+        if self.na_ok:
+            terms.add("N/A")
 
         if not terms:
             self.logger.warning(
@@ -1127,24 +1144,22 @@ class RegexValidator(Validator):
 
     def generate(self, column, column_name):
         # Difficult to use regex in Excel without a VBA macro
-        if not self.excel_formula:
-            if self.unique:
-                params = {"type": "custom", "allow_blank": self.empty_ok}
-                internal_value = "${0}:${0},{0}2".format(column)
-                params["formula1"] = '=COUNTIF({})<2'.format(internal_value)
-                dv = DataValidation(**params)
-                dv.error = 'Value must be unique'
-                dv.add("{}2:{}1048576".format(column, column))
-                return dv
+        params = {"type": "custom", "allow_blank": self.empty_ok}
+        formulas = []
+        if self.excel_formula:
+            formulas.append(self.excel_formula.replace("{CNAME}", column))
+        formula = self._format_formula(formulas)
+
+        if not formula:
             self.logger.warning(
                 "Warning: RegexValidator does not generate a validated column"
             )
             return None
-
+        params["formula1"] = formula
         params = {"type": "custom"}
-        params["formula1"] = self.excel_formula.replace("{CNAME}", column)
+
         dv = DataValidation(**params)
-        dv.error = 'Value must match validation'
+        dv.error = self.describe(column_name)
         dv.add("{}2:{}1048576".format(column, column))
         return dv
 
@@ -1219,18 +1234,23 @@ class GPSValidator(Validator):
 
     def generate(self, column, column_name):
         # Difficult to use regex in Excel without a VBA macro
-        if self.unique:
-            params = {"type": "custom", "allow_blank": self.empty_ok}
-            internal_value = "${0}:${0},{0}2".format(column)
-            params["formula1"] = '=COUNTIF({})<2'.format(internal_value)
-            dv = DataValidation(**params)
-            dv.error = 'Value must be unique'
-            dv.add("{}2:{}1048576".format(column, column))
-            return dv
-        self.logger.warning(
-            "Warning: GPSValidator does not generate a validated column"
-        )
-        return None
+        formulas = []
+        formula = self._format_formula(formulas)
+        params = {"type": "custom", "allow_blank": self.empty_ok}
+
+        if not formula:
+            self.logger.warning(
+                "Warning: GPSValidator does not generate a validated column"
+            )
+            return None
+
+        params["formula1"] = formula
+        params = {"type": "custom"}
+
+        dv = DataValidation(**params)
+        dv.error = self.describe(column_name)
+        dv.add("{}2:{}1048576".format(column, column))
+        return dv
 
     def describe(self, column_name):
         if self.readme:
