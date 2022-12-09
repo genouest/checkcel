@@ -167,7 +167,7 @@ class TextValidator(Validator):
         if not self.empty_check:
             self._precheck_empty_ok_if(row)
 
-        if self.na_ok and field.lower() in ['na' 'n/a']:
+        if self.na_ok and field.lower() in ['na', 'n/a']:
             return
 
         if not field and not self._can_be_empty(row):
@@ -217,7 +217,7 @@ class CastValidator(Validator):
 
         try:
             if field or not self._can_be_empty(row):
-                if self.na_ok and field.lower() in ['na' 'n/a']:
+                if self.na_ok and field.lower() in ['na', 'n/a']:
                     return
 
                 field = float(field)
@@ -315,6 +315,8 @@ class SetValidator(Validator):
         self.valid_values = set([str(val) for val in valid_values])
         if self.empty_ok:
             self.valid_values.add("")
+        if self.na_ok:
+            self.valid_values.add("N/A")
 
     def validate(self, field, row_number, row):
         if not self.empty_check:
@@ -331,7 +333,7 @@ class SetValidator(Validator):
             raise ValidationException(
                 "'{}' is invalid".format(field)
             )
-        if self.na_ok and field.lower() in ['na' 'n/a']:
+        if self.na_ok and field.lower() in ['na', 'n/a']:
             return
 
         if field not in self.valid_values:
@@ -401,6 +403,13 @@ class LinkedSetValidator(Validator):
         self.linked_column = linked_column
         self.column_check = False
 
+        if self.empty_ok:
+            for val in valid_values.values():
+                val.append("")
+        if self.na_ok:
+            for val in valid_values.values():
+                val.append("N/A")
+
     def _precheck_unique_with(self, row):
         if self.linked_column not in row.keys():
             raise BadValidatorException("Linked column {} is not in file columns".format(self.linked_column))
@@ -418,7 +427,7 @@ class LinkedSetValidator(Validator):
         if not field and self.empty_ok:
             return
 
-        if self.na_ok and field.lower() in ['na' 'n/a']:
+        if self.na_ok and field.lower() in ['na', 'n/a']:
             return
 
         related_column_value = row[self.linked_column]
@@ -505,7 +514,7 @@ class DateValidator(Validator):
 
         try:
             if field or not self._can_be_empty(row):
-                if self.na_ok and field.lower() in ['na' 'n/a']:
+                if self.na_ok and field.lower() in ['na', 'n/a']:
                     return
                 # Pandas auto convert fields into dates (ignoring the parse_dates=False)
                 field = str(field)
@@ -537,20 +546,17 @@ class DateValidator(Validator):
 
     def generate(self, column, column_name, additional_column=None, additional_worksheet=None):
         # GreaterThanOrEqual for validity with ODS.
-        params = {"type": "date", "allow_blank": self.empty_ok}
-        if (self.before is not None and self.after is not None):
-            params["formula1"] = parser.parse(self.after).strftime("%Y/%m/%d")
-            params["formula2"] = parser.parse(self.before).strftime("%Y/%m/%d")
-            params["operator"] = "between"
-        elif self.before is not None:
-            params["formula1"] = parser.parse(self.before).strftime("%Y/%m/%d")
-            params["operator"] = "lessThanOrEqual"
-        elif self.after is not None:
-            params["formula1"] = parser.parse(self.after).strftime("%Y/%m/%d")
-            params["operator"] = "greaterThanOrEqual"
-        else:
-            params["formula1"] = "01/01/1900"
-            params["operator"] = "greaterThanOrEqual"
+        params = {"type": "custom", "allow_blank": self.empty_ok}
+        formulas = []
+
+        formulas.append("IsDate({}2)".format(column))
+        if self.before is not None:
+            formulas.append("{}2<={}".format(column, parser.parse(self.before).strftime("%Y/%m/%d")))
+        if self.after is not None:
+            formulas.append("{}2>={}".format(column, parser.parse(self.after).strftime("%Y/%m/%d")))
+
+        formula = self._format_formula(formulas)
+        params['formula1'] = formula
 
         dv = DataValidation(**params)
         dv.add("{}2:{}1048576".format(column, column))
@@ -604,7 +610,7 @@ class TimeValidator(Validator):
             field = field.strip()
         try:
             if field or not self._can_be_empty(row):
-                if self.na_ok and field.lower() in ['na' 'n/a']:
+                if self.na_ok and field.lower() in ['na', 'n/a']:
                     return
                 # Pandas auto convert fields into dates (ignoring the parse_dates=False)
                 field = str(field)
@@ -636,20 +642,20 @@ class TimeValidator(Validator):
 
     def generate(self, column, column_name, additional_column=None, additional_worksheet=None):
         # GreaterThanOrEqual for validity with ODS.
+        params = {"type": "custom", "allow_blank": self.empty_ok}
+        formulas = []
 
-        params = {"type": "time", "allow_blank": self.empty_ok}
-        if (self.before is not None and self.after is not None):
-            params["formula1"] = parser.parse(self.after).strftime("%H:%M:%S")
-            params["formula2"] = parser.parse(self.before).strftime("%H:%M:%S")
-            params["operator"] = "between"
-        elif self.before is not None:
-            params["formula1"] = parser.parse(self.before).strftime("%H:%M:%S")
-            params["operator"] = "lessThanOrEqual"
-        elif self.after is not None:
-            params["formula1"] = parser.parse(self.after).strftime("%H:%M:%S")
-            params["operator"] = "greaterThanOrEqual"
+        formulas.append("IsNumber(TimeValue({}2))".format(column))
+        if self.before is not None:
+            formulas.append("{}2<={}".format(column, parser.parse(self.before).strftime("%Y/%m/%d")))
+        if self.after is not None:
+            formulas.append("{}2>={}".format(column, parser.parse(self.after).strftime("%Y/%m/%d")))
+
+        formula = self._format_formula(formulas)
+        params['formula1'] = formula
 
         dv = DataValidation(**params)
+        dv.error = "Time value, formatted as HH:MM:SS"
         dv.add("{}2:{}1048576".format(column, column))
         return dv
 
@@ -685,7 +691,7 @@ class EmailValidator(Validator):
         if self.ignore_space:
             field = field.strip()
         if field or not self._can_be_empty(row):
-            if self.na_ok and field.lower() in ['na' 'n/a']:
+            if self.na_ok and field.lower() in ['na', 'n/a']:
                 return
             try:
                 validate_email(field)
@@ -704,7 +710,10 @@ class EmailValidator(Validator):
 
     def generate(self, column, column_name, ontology_column=None):
         params = {"type": "custom", "allow_blank": self.empty_ok}
-        params["formula1"] = '=ISNUMBER(MATCH("*@*.?*",{}2,0))'.format(column)
+        formulas = ['=ISNUMBER(MATCH("*@*.?*",{}2,0))'.format(column)]
+        formula = self._format_formula(formulas)
+        params['formula1'] = formula
+
         dv = DataValidation(**params)
         dv.error = 'Value must be an email'
         dv.add("{}2:{}1048576".format(column, column))
@@ -742,7 +751,7 @@ class OntologyValidator(Validator):
         if field == "" and self._can_be_empty(row):
             return
 
-        if self.na_ok and field.lower() in ['na' 'n/a']:
+        if self.na_ok and field.lower() in ['na', 'n/a']:
             return
 
         if field in self.invalid_dict["invalid_set"]:
@@ -877,7 +886,7 @@ class UniqueValidator(Validator):
                     "Field cannot be empty"
                 )
 
-        if self.na_ok and field.lower() in ['na' 'n/a']:
+        if self.na_ok and field.lower() in ['na', 'n/a']:
             return
 
         if self.unique_with and not self.unique_check:
@@ -960,7 +969,7 @@ class VocabulaireOuvertValidator(Validator):
         if field == "" and self._can_be_empty(row):
             return
 
-        if self.na_ok and field.lower() in ['na' 'n/a']:
+        if self.na_ok and field.lower() in ['na', 'n/a']:
             return
 
         if field in self.invalid_dict["invalid_set"]:
@@ -1098,7 +1107,7 @@ class RegexValidator(Validator):
         if field == "" and self._can_be_empty(row):
             return
 
-        if self.na_ok and field.lower() in ['na' 'n/a']:
+        if self.na_ok and field.lower() in ['na', 'n/a']:
             return
 
         matches = re.findall(self.regex, field)
@@ -1176,7 +1185,7 @@ class GPSValidator(Validator):
         if field == "" and self._can_be_empty(row):
             return
 
-        if self.na_ok and field.lower() in ['na' 'n/a']:
+        if self.na_ok and field.lower() in ['na', 'n/a']:
             return
 
         if self.format == "DD":
