@@ -261,7 +261,7 @@ class CastValidator(Validator):
         if self.max is not None:
             formulas.append("{}2<={}".format(column, self.max))
 
-        formula = self._format_formula(formulas)
+        formula = self._format_formula(formulas, column)
 
         params['formula1'] = formula
 
@@ -555,7 +555,7 @@ class DateValidator(Validator):
         if self.after is not None:
             formulas.append("{}2>={}".format(column, parser.parse(self.after).strftime("%Y/%m/%d")))
 
-        formula = self._format_formula(formulas)
+        formula = self._format_formula(formulas, column)
         params['formula1'] = formula
 
         dv = DataValidation(**params)
@@ -651,7 +651,7 @@ class TimeValidator(Validator):
         if self.after is not None:
             formulas.append("{}2>={}".format(column, parser.parse(self.after).strftime("%Y/%m/%d")))
 
-        formula = self._format_formula(formulas)
+        formula = self._format_formula(formulas, column)
         params['formula1'] = formula
 
         dv = DataValidation(**params)
@@ -711,7 +711,7 @@ class EmailValidator(Validator):
     def generate(self, column, column_name, ontology_column=None):
         params = {"type": "custom", "allow_blank": self.empty_ok}
         formulas = ['=ISNUMBER(MATCH("*@*.?*",{}2,0))'.format(column)]
-        formula = self._format_formula(formulas)
+        formula = self._format_formula(formulas, column)
         params['formula1'] = formula
 
         dv = DataValidation(**params)
@@ -931,7 +931,7 @@ class UniqueValidator(Validator):
         formulas = []
 
         formulas.append('=COUNTIF({})<2'.format(internal_value))
-        formula = self._format_formula(formulas)
+        formula = self._format_formula(formulas, column)
 
         params["formula1"] = formula
         dv = DataValidation(**params)
@@ -1148,7 +1148,7 @@ class RegexValidator(Validator):
         formulas = []
         if self.excel_formula:
             formulas.append(self.excel_formula.replace("{CNAME}", column))
-        formula = self._format_formula(formulas)
+        formula = self._format_formula(formulas, column)
 
         if not formula:
             self.logger.warning(
@@ -1235,7 +1235,7 @@ class GPSValidator(Validator):
     def generate(self, column, column_name):
         # Difficult to use regex in Excel without a VBA macro
         formulas = []
-        formula = self._format_formula(formulas)
+        formula = self._format_formula(formulas, column)
         params = {"type": "custom", "allow_blank": self.empty_ok}
 
         if not formula:
