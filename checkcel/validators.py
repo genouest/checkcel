@@ -217,7 +217,7 @@ class CastValidator(Validator):
 
         try:
             if field or not self._can_be_empty(row):
-                if self.na_ok and field.lower() in ['na', 'n/a']:
+                if self.na_ok and str(field).lower() in ['na', 'n/a']:
                     return
 
                 field = float(field)
