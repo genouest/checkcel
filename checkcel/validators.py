@@ -115,7 +115,7 @@ class Validator(object):
         formula = ""
 
         if self.unique:
-            internal_value = "${0}:${0},{0}2".format(column)
+            internal_value = "${0}2:${0}1048576,{0}2".format(column)
             parameter_list.append('COUNTIF({})<2'.format(internal_value))
 
         if len(parameter_list) == 0:
@@ -251,7 +251,7 @@ class CastValidator(Validator):
         params = {"type": "custom", "allow_blank": self.empty_ok}
         formulas = []
         if self.type == "whole":
-            formulas.append("MOD({}2,1)=0".format(column))
+            formulas.append("IFERROR(MOD({}2,1)=0;FALSE)".format(column))
         else:
             formulas.append("ISNUMBER({}2)".format(column))
 
@@ -710,7 +710,7 @@ class EmailValidator(Validator):
 
     def generate(self, column, column_name, ontology_column=None):
         params = {"type": "custom", "allow_blank": self.empty_ok}
-        formulas = ['=ISNUMBER(MATCH("*@*.?*",{}2,0))'.format(column)]
+        formulas = ['ISNUMBER(MATCH("*@*.?*",{}2,0))'.format(column)]
         formula = self._format_formula(formulas, column)
         params['formula1'] = formula
 
