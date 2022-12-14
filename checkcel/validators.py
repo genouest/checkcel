@@ -251,7 +251,7 @@ class CastValidator(Validator):
         params = {"type": "custom", "allow_blank": self.empty_ok}
         formulas = []
         if self.type == "whole":
-            formulas.append("IFERROR(MOD({}2,1)=0;FALSE)".format(column))
+            formulas.append("IFERROR(MOD({}2,1)=0,FALSE)".format(column))
         else:
             formulas.append("ISNUMBER({}2)".format(column))
 
