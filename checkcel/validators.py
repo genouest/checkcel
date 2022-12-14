@@ -549,16 +549,17 @@ class DateValidator(Validator):
         params = {"type": "custom", "allow_blank": self.empty_ok}
         formulas = []
 
-        formulas.append("IsDate({}2)".format(column))
+        formulas.append("ISNUMBER({}2)".format(column))
         if self.before is not None:
-            formulas.append("{}2<={}".format(column, parser.parse(self.before).strftime("%Y/%m/%d")))
+            formulas.append('{}2<=DATEVALUE("{}")'.format(column, parser.parse(self.before).strftime("%Y/%m/%d")))
         if self.after is not None:
-            formulas.append("{}2>={}".format(column, parser.parse(self.after).strftime("%Y/%m/%d")))
+            formulas.append('{}2>=DATEVALUE("{}")'.format(column, parser.parse(self.after).strftime("%Y/%m/%d")))
 
         formula = self._format_formula(formulas, column)
         params['formula1'] = formula
 
         dv = DataValidation(**params)
+        dv.error = self.describe(column_name)
         dv.add("{}2:{}1048576".format(column, column))
         return dv
 
@@ -645,17 +646,17 @@ class TimeValidator(Validator):
         params = {"type": "custom", "allow_blank": self.empty_ok}
         formulas = []
 
-        formulas.append("IsNumber(TimeValue({}2))".format(column))
+        formulas.append("IsNumber({}2)".format(column))
         if self.before is not None:
-            formulas.append("{}2<={}".format(column, parser.parse(self.before).strftime("%Y/%m/%d")))
+            formulas.append('{}2<=TIMEVALUE("{}")'.format(column, parser.parse(self.before).time()))
         if self.after is not None:
-            formulas.append("{}2>={}".format(column, parser.parse(self.after).strftime("%Y/%m/%d")))
+            formulas.append('{}2>=TIMEVALUE("{}")'.format(column, parser.parse(self.after).time()))
 
         formula = self._format_formula(formulas, column)
         params['formula1'] = formula
 
         dv = DataValidation(**params)
-        dv.error = "Time value, formatted as HH:MM:SS"
+        dv.error = self.describe(column_name) + " (using ':' as separators)"
         dv.add("{}2:{}1048576".format(column, column))
         return dv
 
