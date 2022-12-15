@@ -25,6 +25,7 @@ class Checkplate(object):
         self.na_ok = na_ok
         self.unique = unique
         self.skip_generation = skip_generation
+        self.skip_validation = skip_validation
         self.ignore_case = ignore_case
         self.ignore_space = ignore_space
         self.expected_rows = expected_rows
