@@ -514,17 +514,24 @@ class LinkedSetValidator(Validator):
         # Override with template value if it was not set (default to None)
         super()._set_attributes(empty_ok_template, ignore_case_template, ignore_space_template, na_ok_template, unique_template, skip_generation_template, skip_validation_template)
 
-        if self.empty_ok:
-            self.valid_values.add("")
+        for key, values in self.valid_values.items():
+            changed = False
+            new_values = values
+            if self.empty_ok:
+                new_values.add("")
+                changed = True
+            if self.na_ok:
+                new_values.add("N/A")
+                changed = True
+            if self.ignore_case:
+                new_values = set([value.lower() for value in new_values])
+                changed = True
+            if self.ignore_space:
+                new_values = set([value.strip() for value in new_values])
+                changed = True
 
-        if self.na_ok:
-            self.valid_values.add("N/A")
-
-        if self.ignore_case:
-            self.valid_values = set([value.lower() for value in self.valid_values])
-
-        if self.ignore_case:
-            self.ignore_space = set([value.strip() for value in self.valid_values])
+            if changed:
+                self.valid_values[key] = new_values
 
 
 class DateValidator(Validator):
