@@ -599,9 +599,15 @@ class DateValidator(Validator):
 
         formulas.append("ISNUMBER({}2)".format(column))
         if self.before is not None:
-            formulas.append('{}2<=DATEVALUE("{}")'.format(column, parser.parse(self.before).strftime("%Y/%m/%d")))
+            if parser.parse(self.before) < parser.parse("01/01/1900"):
+                self.warn("Before date is before 01/01/1900: Validation will not work in excel, skipping")
+            else:
+                formulas.append('{}2<=DATEVALUE("{}")'.format(column, parser.parse(self.before).strftime("%Y/%m/%d")))
         if self.after is not None:
-            formulas.append('{}2>=DATEVALUE("{}")'.format(column, parser.parse(self.after).strftime("%Y/%m/%d")))
+            if parser.parse(self.after) < parser.parse("01/01/1900"):
+                self.warn("After date is before 01/01/1900: Validation will not work in excel, skipping")
+            else:
+                formulas.append('{}2>=DATEVALUE("{}")'.format(column, parser.parse(self.after).strftime("%Y/%m/%d")))
 
         formula = self._format_formula(formulas, column)
         params['formula1'] = formula
