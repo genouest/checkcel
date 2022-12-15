@@ -15,7 +15,7 @@ from copy import deepcopy
 
 class Checkplate(object):
     """ Base class for templates """
-    def __init__(self, validators={}, empty_ok=False, ignore_case=False, ignore_space=False, metadata=[], expected_rows=None, na_ok=False, unique=False, skip_generation=False, skip_validation=False):
+    def __init__(self, validators={}, empty_ok=False, ignore_case=False, ignore_space=False, metadata=[], expected_rows=None, na_ok=False, unique=False, skip_generation=False, skip_validation=False, freeze_header=False):
         self.metadata = metadata
         self.logger = logs.logger
         self.validators = validators or getattr(self, "validators", {})
@@ -29,6 +29,7 @@ class Checkplate(object):
         self.ignore_case = ignore_case
         self.ignore_space = ignore_space
         self.expected_rows = expected_rows
+        self.freeze_header = freeze_header
         # self.trim_values = False
         for validator in self.validators.values():
             validator._set_attributes(self.empty_ok, self.ignore_case, self.ignore_space, self.na_ok, self.unique, self.skip_generation, self.skip_validation)
@@ -80,6 +81,7 @@ class Checkplate(object):
         self.ignore_case = getattr(custom_class, 'ignore_case', False)
         self.ignore_space = getattr(custom_class, 'ignore_space', False)
         self.expected_rows = getattr(custom_class, 'expected_rows', 0)
+        self.freeze_header = getattr(custom_class, 'freeze_header', False)
         try:
             self.expected_rows = int(self.expected_rows)
         except ValueError:
@@ -151,6 +153,7 @@ class Checkplate(object):
         self.unique = data.get('unique', False)
         self.skip_generation = data.get('skip_generation', False)
         self.skip_validation = data.get('skip_validation', False)
+        self.freeze_header = data.get('freeze_header', False)
         try:
             self.expected_rows = int(self.expected_rows)
         except ValueError:

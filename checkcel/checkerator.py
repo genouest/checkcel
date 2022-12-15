@@ -71,6 +71,9 @@ class Checkerator(Checkplate):
             for column_cells in sheet.columns:
                 length = (max(len(self.as_text(cell.value)) for cell in column_cells) + 2) * 1.2
                 sheet.column_dimensions[get_column_letter(column_cells[0].column)].width = length
+
+        if self.freeze_header:
+            data_sheet.freeze_panes = "A2"
         wb.save(filename=self.output)
 
     def as_text(self, value):
