@@ -370,23 +370,21 @@ class SetValidator(Validator):
                 raise ValidationException("'{}' is already in the column".format(field))
             self.unique_values.add(field)
 
-    def _set_attributes(self, empty_ok_template, ignore_case_template, ignore_space_template):
+    def _set_attributes(self, empty_ok_template, ignore_case_template, ignore_space_template, na_ok_template, unique_template, skip_generation_template, skip_validation_template):
         # Override with template value if it was not set (default to None)
-        if self.empty_ok is None:
-            self.empty_ok = empty_ok_template
+        super()._set_attributes(empty_ok_template, ignore_case_template, ignore_space_template, na_ok_template, unique_template, skip_generation_template, skip_validation_template)
+
         if self.empty_ok:
             self.valid_values.add("")
 
         if self.na_ok:
-            self.valid_values.add("NA")
+            self.valid_values.add("N/A")
 
-        if self.ignore_case is None:
-            self.ignore_case = ignore_case_template
         if self.ignore_case:
             self.valid_values = set([value.lower() for value in self.valid_values])
 
-        if self.ignore_space is None:
-            self.ignore_space = ignore_space_template
+        if self.ignore_case:
+            self.ignore_space = set([value.strip() for value in self.valid_values])
 
     @property
     def bad(self):
@@ -511,6 +509,22 @@ class LinkedSetValidator(Validator):
         if self.readme:
             column_name += " ({})".format(self.readme)
         return "{} : Linked values to column {} {}{}".format(column_name, self.linked_column, "(required)" if not self.empty_ok else "", "(unique)" if self.unique else "")
+
+    def _set_attributes(self, empty_ok_template, ignore_case_template, ignore_space_template, na_ok_template, unique_template, skip_generation_template, skip_validation_template):
+        # Override with template value if it was not set (default to None)
+        super()._set_attributes(empty_ok_template, ignore_case_template, ignore_space_template, na_ok_template, unique_template, skip_generation_template, skip_validation_template)
+
+        if self.empty_ok:
+            self.valid_values.add("")
+
+        if self.na_ok:
+            self.valid_values.add("N/A")
+
+        if self.ignore_case:
+            self.valid_values = set([value.lower() for value in self.valid_values])
+
+        if self.ignore_case:
+            self.ignore_space = set([value.strip() for value in self.valid_values])
 
 
 class DateValidator(Validator):
