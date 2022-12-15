@@ -108,11 +108,11 @@ In all cases, you will need to at least include a list of validators and associa
 * *metadata*: A list of column names. This will create a metadata sheet with these columns, without validation on them
 * *expected_rows*: (Default 0): Number of *data* rows expected
 * *empty_ok* (Default False): Whether to accept empty values as valid
-* *ignore_space* (Default False): whether to trim the values for spaces before checking validity
-* *ignore_case* (Default False): whether to ignore the case
-* *na_ok* (Default False): whether to allow NA (or n/a) values as valid, no matter the validator.
-* *ignore_case* (Default False): whether to ignore the case
-* *generate_validation* (Default True): whether to add validation in the generated excel file
+* *na_ok* (Default False): whether to allow NA (or n/a) values as valid
+* *ignore_space* (Default False): whether to trim the values for spaces before checking validity in python
+* *ignore_case* (Default False): whether to ignore the case (when relevant)before checking validity in python
+* *skip_generation* (Default False): whether to skip the excel validation generation (for file generation) for all validators
+* *skip_validation* (Default False): whether to skip the python validation for all validators
 * *unique* (Default False): whether to require unicity for all validators
 
 The last 3 parameters will affect all the validators (when relevant), but can be overriden at the validator level (eg, you can set 'empty_ok' to True for all, but set it to False for a specific validator).
@@ -161,7 +161,8 @@ All validators (except NoValidator) have these options available. If relevant, t
 * *ignore_case* (Default False): whether to ignore the case
 * *unique* (Default False): whether to enforce unicity for this column. (Not enforced in excel for 'Set-type' validators (set, linked-set, ontology, vocabulaireOuvert))
 * *na_ok* (Default False): whether to allow NA (or n/a) values as valid.
-* *generate_validation* (Default True): whether to add validation in the generated excel file for this validator
+* *skip_generation* (Default False): whether to skip the excel validation for this validator (for file generation)
+* *skip_validation* (Default False): whether to skip the python validation for this validator
 
 *As excel validation for non-empty values is unreliable, the non-emptiness cannot be properly enforced in excel files*
 
