@@ -426,12 +426,7 @@ class LinkedSetValidator(Validator):
         self.linked_column = linked_column
         self.column_check = False
 
-        if self.empty_ok:
-            for val in valid_values.values():
-                val.append("")
-        if self.na_ok:
-            for val in valid_values.values():
-                val.append("N/A")
+        self._clean_values()
 
     def _precheck_unique_with(self, row):
         if self.linked_column not in row.keys():
@@ -513,25 +508,22 @@ class LinkedSetValidator(Validator):
     def _set_attributes(self, empty_ok_template, ignore_case_template, ignore_space_template, na_ok_template, unique_template, skip_generation_template, skip_validation_template):
         # Override with template value if it was not set (default to None)
         super()._set_attributes(empty_ok_template, ignore_case_template, ignore_space_template, na_ok_template, unique_template, skip_generation_template, skip_validation_template)
+        self._clean_values()
 
+    def _clean_values(self):
         for key, values in self.valid_values.items():
-            changed = False
-            new_values = values
+            cleaned_values = set()
+            for value in values:
+                if self.ignore_case:
+                    value = value.lower()
+                if self.ignore_space:
+                    value = value.strip()
+                cleaned_values.add(value)
             if self.empty_ok:
-                new_values.add("")
-                changed = True
+                cleaned_values.add("")
             if self.na_ok:
-                new_values.add("N/A")
-                changed = True
-            if self.ignore_case:
-                new_values = set([value.lower() for value in new_values])
-                changed = True
-            if self.ignore_space:
-                new_values = set([value.strip() for value in new_values])
-                changed = True
-
-            if changed:
-                self.valid_values[key] = new_values
+                cleaned_values.add("N/A")
+            self.valid_values[key] = cleaned_values
 
 
 class DateValidator(Validator):
