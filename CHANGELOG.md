@@ -11,12 +11,15 @@ This changelog was started for release 0.0.3.
 
 ### Added
 
-- empty_ok_if key for validator
-- empty_ok_unless key for validator
+- empty_ok_if key for validator & templates
+- empty_ok_unless key for validator & templates
 - readme key for validator
 - unique key for validator
 - expected_rows key for templates
 - logs parameters for templates
+- na_ok key for validators & templates
+- skip_generation key for validators & templates
+- skip_validation key for validators & templates
 
 ### Fixed
 
@@ -25,3 +28,4 @@ This changelog was started for release 0.0.3.
 ### Changed
 
 - Better validation for integers
+- Refactor validation in excel for most validators (to include unique & na_ok)

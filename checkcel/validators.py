@@ -18,7 +18,7 @@ from checkcel import logs
 class Validator(object):
     """ Generic Validator class """
 
-    def __init__(self, empty_ok=None, ignore_case=None, ignore_space=None, empty_ok_if=None, empty_ok_unless=None, readme=None, unique=False, na_ok=False):
+    def __init__(self, empty_ok=None, ignore_case=None, ignore_space=None, empty_ok_if=None, empty_ok_unless=None, readme=None, unique=None, na_ok=None, skip_generation=None, skip_validation=None):
         self.logger = logs.logger
         self.invalid_dict = defaultdict(set)
         self.fail_count = 0
@@ -32,6 +32,8 @@ class Validator(object):
         self.readme = readme
         self.unique = unique
         self.unique_values = set()
+        self.skip_generation = skip_generation
+        self.skip_validation = skip_validation
 
         if empty_ok_if:
             if not (isinstance(empty_ok_if, dict) or isinstance(empty_ok_if, list) or isinstance(empty_ok_if, str)):
@@ -100,7 +102,7 @@ class Validator(object):
         """ Return a line of text describing allowed values"""
         raise NotImplementedError
 
-    def _set_attributes(self, empty_ok_template=False, ignore_case_template=False, ignore_space_template=False, na_ok_template=False):
+    def _set_attributes(self, empty_ok_template=False, ignore_case_template=False, ignore_space_template=False, na_ok_template=False, unique=False, skip_generation=False, skip_validation=False):
         # Override with template value if it was not set (default to None)
         if self.empty_ok is None:
             self.empty_ok = empty_ok_template
@@ -110,6 +112,12 @@ class Validator(object):
             self.ignore_case = ignore_case_template
         if self.ignore_space is None:
             self.ignore_space = ignore_space_template
+        if self.unique is None:
+            self.unique = unique
+        if self.skip_generation is None:
+            self.skip_generation = skip_generation
+        if self.skip_validation is None:
+            self.skip_validation = skip_validation
 
     def _format_formula(self, parameter_list, column):
         formula = ""
@@ -164,6 +172,9 @@ class TextValidator(Validator):
         super(TextValidator, self).__init__(**kwargs)
 
     def validate(self, field, row_number, row):
+        if self.skip_validation:
+            return None
+
         if not self.empty_check:
             self._precheck_empty_ok_if(row)
 
@@ -185,6 +196,9 @@ class TextValidator(Validator):
         return self.invalid_dict
 
     def generate(self, column, column_name):
+        if self.skip_generation:
+            return None
+
         if self.unique:
             params = {"type": "custom", "allow_blank": self.empty_ok}
             formula = self._format_formula([], column)
@@ -209,6 +223,9 @@ class CastValidator(Validator):
         self.max = max
 
     def validate(self, field, row_number, row):
+        if self.skip_validation:
+            return None
+
         if not self.empty_check:
             self._precheck_empty_ok_if(row)
 
@@ -248,6 +265,9 @@ class CastValidator(Validator):
         return self.invalid_dict
 
     def generate(self, column, column_name):
+        if self.skip_generation:
+            return None
+
         params = {"type": "custom", "allow_blank": self.empty_ok}
         formulas = []
         if self.type == "whole":
@@ -319,6 +339,9 @@ class SetValidator(Validator):
             self.valid_values.add("N/A")
 
     def validate(self, field, row_number, row):
+        if self.skip_validation:
+            return None
+
         if not self.empty_check:
             self._precheck_empty_ok_if(row)
 
@@ -347,29 +370,29 @@ class SetValidator(Validator):
                 raise ValidationException("'{}' is already in the column".format(field))
             self.unique_values.add(field)
 
-    def _set_attributes(self, empty_ok_template, ignore_case_template, ignore_space_template):
+    def _set_attributes(self, empty_ok_template, ignore_case_template, ignore_space_template, na_ok_template, unique_template, skip_generation_template, skip_validation_template):
         # Override with template value if it was not set (default to None)
-        if self.empty_ok is None:
-            self.empty_ok = empty_ok_template
+        super()._set_attributes(empty_ok_template, ignore_case_template, ignore_space_template, na_ok_template, unique_template, skip_generation_template, skip_validation_template)
+
         if self.empty_ok:
             self.valid_values.add("")
 
         if self.na_ok:
-            self.valid_values.add("NA")
+            self.valid_values.add("N/A")
 
-        if self.ignore_case is None:
-            self.ignore_case = ignore_case_template
         if self.ignore_case:
             self.valid_values = set([value.lower() for value in self.valid_values])
 
-        if self.ignore_space is None:
-            self.ignore_space = ignore_space_template
+        if self.ignore_case:
+            self.ignore_space = set([value.strip() for value in self.valid_values])
 
     @property
     def bad(self):
         return self.invalid_dict
 
     def generate(self, column, column_name, additional_column=None, additional_worksheet=None):
+        if self.skip_generation:
+            return None
         # If total length > 256 : need to use cells on another sheet
         if additional_column and additional_worksheet:
             params = {"type": "list", "allow_blank": self.empty_ok}
@@ -403,12 +426,7 @@ class LinkedSetValidator(Validator):
         self.linked_column = linked_column
         self.column_check = False
 
-        if self.empty_ok:
-            for val in valid_values.values():
-                val.append("")
-        if self.na_ok:
-            for val in valid_values.values():
-                val.append("N/A")
+        self._clean_values()
 
     def _precheck_unique_with(self, row):
         if self.linked_column not in row.keys():
@@ -416,6 +434,9 @@ class LinkedSetValidator(Validator):
         self.column_check = True
 
     def validate(self, field, row_number, row):
+        if self.skip_validation:
+            return None
+
         if self.ignore_case:
             field = field.lower()
         if self.ignore_space:
@@ -454,6 +475,8 @@ class LinkedSetValidator(Validator):
         return self.invalid_dict
 
     def generate(self, column, column_name, set_columns, additional_column, additional_worksheet, workbook):
+        if self.skip_generation:
+            return None
         if self.linked_column not in set_columns:
             # TODO raise warning
             return None
@@ -482,6 +505,26 @@ class LinkedSetValidator(Validator):
             column_name += " ({})".format(self.readme)
         return "{} : Linked values to column {} {}{}".format(column_name, self.linked_column, "(required)" if not self.empty_ok else "", "(unique)" if self.unique else "")
 
+    def _set_attributes(self, empty_ok_template, ignore_case_template, ignore_space_template, na_ok_template, unique_template, skip_generation_template, skip_validation_template):
+        # Override with template value if it was not set (default to None)
+        super()._set_attributes(empty_ok_template, ignore_case_template, ignore_space_template, na_ok_template, unique_template, skip_generation_template, skip_validation_template)
+        self._clean_values()
+
+    def _clean_values(self):
+        for key, values in self.valid_values.items():
+            cleaned_values = set()
+            for value in values:
+                if self.ignore_case:
+                    value = value.lower()
+                if self.ignore_space:
+                    value = value.strip()
+                cleaned_values.add(value)
+            if self.empty_ok:
+                cleaned_values.add("")
+            if self.na_ok:
+                cleaned_values.add("N/A")
+            self.valid_values[key] = cleaned_values
+
 
 class DateValidator(Validator):
     """ Validates that a field is a Date """
@@ -506,6 +549,9 @@ class DateValidator(Validator):
         self.after = after
 
     def validate(self, field, row_number, row):
+        if self.skip_validation:
+            return None
+
         if not self.empty_check:
             self._precheck_empty_ok_if(row)
 
@@ -545,15 +591,23 @@ class DateValidator(Validator):
         return self.invalid_dict
 
     def generate(self, column, column_name, additional_column=None, additional_worksheet=None):
+        if self.skip_generation:
+            return None
         # GreaterThanOrEqual for validity with ODS.
         params = {"type": "custom", "allow_blank": self.empty_ok}
         formulas = []
 
         formulas.append("ISNUMBER({}2)".format(column))
         if self.before is not None:
-            formulas.append('{}2<=DATEVALUE("{}")'.format(column, parser.parse(self.before).strftime("%Y/%m/%d")))
+            if parser.parse(self.before) < parser.parse("01/01/1900"):
+                self.warn("Before date is before 01/01/1900: Validation will not work in excel, skipping")
+            else:
+                formulas.append('{}2<=DATEVALUE("{}")'.format(column, parser.parse(self.before).strftime("%Y/%m/%d")))
         if self.after is not None:
-            formulas.append('{}2>=DATEVALUE("{}")'.format(column, parser.parse(self.after).strftime("%Y/%m/%d")))
+            if parser.parse(self.after) < parser.parse("01/01/1900"):
+                self.warn("After date is before 01/01/1900: Validation will not work in excel, skipping")
+            else:
+                formulas.append('{}2>=DATEVALUE("{}")'.format(column, parser.parse(self.after).strftime("%Y/%m/%d")))
 
         formula = self._format_formula(formulas, column)
         params['formula1'] = formula
@@ -604,6 +658,9 @@ class TimeValidator(Validator):
         self.after = after
 
     def validate(self, field, row_number, row):
+        if self.skip_validation:
+            return None
+
         if not self.empty_check:
             self._precheck_empty_ok_if(row)
 
@@ -642,6 +699,8 @@ class TimeValidator(Validator):
         return self.invalid_dict
 
     def generate(self, column, column_name, additional_column=None, additional_worksheet=None):
+        if self.skip_generation:
+            return None
         # GreaterThanOrEqual for validity with ODS.
         params = {"type": "custom", "allow_blank": self.empty_ok}
         formulas = []
@@ -686,6 +745,9 @@ class EmailValidator(Validator):
         super(EmailValidator, self).__init__(**kwargs)
 
     def validate(self, field, row_number, row):
+        if self.skip_validation:
+            return None
+
         if not self.empty_check:
             self._precheck_empty_ok_if(row)
 
@@ -710,6 +772,8 @@ class EmailValidator(Validator):
         return self.invalid_dict
 
     def generate(self, column, column_name, ontology_column=None):
+        if self.skip_generation:
+            return None
         params = {"type": "custom", "allow_blank": self.empty_ok}
         formulas = ['ISNUMBER(MATCH("*@*.?*",{}2,0))'.format(column)]
         formula = self._format_formula(formulas, column)
@@ -743,11 +807,17 @@ class OntologyValidator(Validator):
             raise BadValidatorException("'{}' is not a valid root term for ontology {}".format(self.root_term, self.ontology))
 
     def validate(self, field, row_number, row):
+        if self.skip_validation:
+            return None
+
         if not self.empty_check:
             self._precheck_empty_ok_if(row)
 
         if self.ignore_space:
             field = field.strip()
+
+        if self.ignore_case:
+            field = field.lower()
 
         if field == "" and self._can_be_empty(row):
             return
@@ -776,6 +846,8 @@ class OntologyValidator(Validator):
         return self.invalid_dict
 
     def generate(self, column, column_name, additional_column, additional_worksheet):
+        if self.skip_generation:
+            return None
         terms = self._get_ontological_terms()
         if self.empty_ok:
             terms.add("")
@@ -880,11 +952,17 @@ class UniqueValidator(Validator):
         self.unique_check = True
 
     def validate(self, field, row_number, row):
+        if self.skip_validation:
+            return None
+
         if not self.empty_check:
             self._precheck_empty_ok_if(row)
 
         if self.ignore_space:
             field = field.strip()
+
+        if self.ignore_case:
+            field = field.lower()
 
         if not field:
             if self._can_be_empty(row):
@@ -920,6 +998,8 @@ class UniqueValidator(Validator):
         return self.invalid_dict
 
     def generate(self, column, column_name, column_dict):
+        if self.skip_generation:
+            return None
         if self.unique_with and not all([val in column_dict for val in self.unique_with]):
             raise BadValidatorException("Using unique_with, but the related column was not defined before")
 
@@ -974,11 +1054,17 @@ class VocabulaireOuvertValidator(Validator):
                 raise BadValidatorException("'{}' is not a valid root term. Make sure it is a concept, and not a microthesaurus or group".format(self.root_term))
 
     def validate(self, field, row_number, row):
+        if self.skip_validation:
+            return None
+
         if not self.empty_check:
             self._precheck_empty_ok_if(row)
 
         if self.ignore_space:
             field = field.strip()
+
+        if self.ignore_case:
+            field = field.lower()
 
         if field == "" and self._can_be_empty(row):
             return
@@ -1008,6 +1094,8 @@ class VocabulaireOuvertValidator(Validator):
         return self.invalid_dict
 
     def generate(self, column, column_name, additional_column, additional_worksheet):
+        if self.skip_generation:
+            return None
         # No point in loading 15000 terms
         # No easy way to do it anyway
         if not self.root_term_iri:
@@ -1116,11 +1204,17 @@ class RegexValidator(Validator):
             raise BadValidatorException("'{}' is not a valid regular expression".format(self.regex))
 
     def validate(self, field, row_number, row):
+        if self.skip_validation:
+            return None
+
         if not self.empty_check:
             self._precheck_empty_ok_if(row)
 
         if self.ignore_space:
             field = field.strip()
+
+        if self.ignore_case:
+            field = field.lower()
 
         if field == "" and self._can_be_empty(row):
             return
@@ -1144,6 +1238,8 @@ class RegexValidator(Validator):
         return self.invalid_dict
 
     def generate(self, column, column_name):
+        if self.skip_generation:
+            return None
         # Difficult to use regex in Excel without a VBA macro
         params = {"type": "custom", "allow_blank": self.empty_ok}
         formulas = []
@@ -1192,6 +1288,9 @@ class GPSValidator(Validator):
         self.only_lat = only_lat
 
     def validate(self, field, row_number, row):
+        if self.skip_validation:
+            return None
+
         if not self.empty_check:
             self._precheck_empty_ok_if(row)
 
@@ -1234,6 +1333,8 @@ class GPSValidator(Validator):
         return self.invalid_dict
 
     def generate(self, column, column_name):
+        if self.skip_generation:
+            return None
         # Difficult to use regex in Excel without a VBA macro
         formulas = []
         formula = self._format_formula(formulas, column)
