@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 This changelog was started for release 0.0.3.
 
-## [0.0.3] - Unreleased
+## [0.0.3] - 21/11/2022
 
 ### Added
 
@@ -24,6 +24,7 @@ This changelog was started for release 0.0.3.
 ### Fixed
 
 - Bug for setValidator when using number values
+- Fixed regex for GPS
 
 ### Changed
 

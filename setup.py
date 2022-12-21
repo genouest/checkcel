@@ -5,7 +5,7 @@ with open('requirements.txt') as f:
 
 setup(
     name="checkcel",
-    version='0.0.2',
+    version='0.0.3',
     description="Generate and validate tabulated/spreadsheet files",
     author="Mateo Boudet",
     author_email="mateo.boudet@inrae.fr",

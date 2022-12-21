@@ -98,6 +98,7 @@ Checkcel(
     sheet="0"
 ).load_from_json_file(your_json_template_file).validate()
 
+# You can access the logs from python with the 'logs' key of the Checkcel class
 ```
 
 # Templates
