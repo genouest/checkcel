@@ -924,14 +924,14 @@ class UniqueValidator(Validator):
             raise BadValidatorException("Using unique_with, but the related column was not defined before")
 
         params = {"type": "custom", "allow_blank": self.empty_ok}
-        internal_value = "${0}:${0},{0}2".format(column)
+        internal_value = "${0}2:${0}1048576,{0}2".format(column)
         if self.unique_with:
             for col in self.unique_with:
-                internal_value += ",${0}:${0},{0}2".format(column_dict[col])
+                internal_value += ",${0}2:${0}1048576,{0}2".format(column_dict[col])
 
         formulas = []
 
-        formulas.append('=COUNTIF({})<2'.format(internal_value))
+        formulas.append('COUNTIFS({})<2'.format(internal_value))
         formula = self._format_formula(formulas, column)
 
         params["formula1"] = formula
