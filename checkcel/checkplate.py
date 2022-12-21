@@ -15,19 +15,24 @@ from copy import deepcopy
 
 class Checkplate(object):
     """ Base class for templates """
-    def __init__(self, validators={}, empty_ok=False, ignore_case=False, ignore_space=False, metadata=[], expected_rows=None):
+    def __init__(self, validators={}, empty_ok=False, ignore_case=False, ignore_space=False, metadata=[], expected_rows=None, na_ok=False, unique=False, skip_generation=False, skip_validation=False, freeze_header=False):
         self.metadata = metadata
         self.logger = logs.logger
         self.validators = validators or getattr(self, "validators", {})
         self.logs = []
         # Will be overriden by validators config
         self.empty_ok = empty_ok
+        self.na_ok = na_ok
+        self.unique = unique
+        self.skip_generation = skip_generation
+        self.skip_validation = skip_validation
         self.ignore_case = ignore_case
         self.ignore_space = ignore_space
         self.expected_rows = expected_rows
+        self.freeze_header = freeze_header
         # self.trim_values = False
         for validator in self.validators.values():
-            validator._set_attributes(self.empty_ok, self.ignore_case, self.ignore_space)
+            validator._set_attributes(self.empty_ok, self.ignore_case, self.ignore_space, self.na_ok, self.unique, self.skip_generation, self.skip_validation)
 
     def debug(self, message):
         self.logger.debug(message)
@@ -69,9 +74,14 @@ class Checkplate(object):
         self.metadata = getattr(custom_class, 'metadata', [])
         self.validators = deepcopy(custom_class.validators)
         self.empty_ok = getattr(custom_class, 'empty_ok', False)
+        self.na_ok = getattr(custom_class, 'na_ok', False)
+        self.unique = getattr(custom_class, 'unique', False)
+        self.skip_generation = getattr(custom_class, 'skip_generation', False)
+        self.skip_validation = getattr(custom_class, 'skip_validation', False)
         self.ignore_case = getattr(custom_class, 'ignore_case', False)
         self.ignore_space = getattr(custom_class, 'ignore_space', False)
         self.expected_rows = getattr(custom_class, 'expected_rows', 0)
+        self.freeze_header = getattr(custom_class, 'freeze_header', False)
         try:
             self.expected_rows = int(self.expected_rows)
         except ValueError:
@@ -80,7 +90,7 @@ class Checkplate(object):
             )
 
         for key, validator in self.validators.items():
-            validator._set_attributes(self.empty_ok, self.ignore_case, self.ignore_space)
+            validator._set_attributes(self.empty_ok, self.ignore_case, self.ignore_space, self.na_ok, self.unique, self.skip_generation, self.skip_validation)
         return self
 
     def load_from_json_file(self, file_path):
@@ -136,9 +146,14 @@ class Checkplate(object):
             return exits.UNAVAILABLE
 
         self.empty_ok = data.get("empty_ok", False)
+        self.na_ok = data.get("na_ok", False)
         self.ignore_case = data.get('ignore_case', False)
         self.ignore_space = data.get('ignore_space', False)
         self.expected_rows = data.get('expected_rows', 0)
+        self.unique = data.get('unique', False)
+        self.skip_generation = data.get('skip_generation', False)
+        self.skip_validation = data.get('skip_validation', False)
+        self.freeze_header = data.get('freeze_header', False)
         try:
             self.expected_rows = int(self.expected_rows)
         except ValueError:
@@ -161,7 +176,7 @@ class Checkplate(object):
             try:
                 validator_class = getattr(validators, validator['type'])
                 val = validator_class(**options)
-                val._set_attributes(self.empty_ok, self.ignore_case, self.ignore_space)
+                val._set_attributes(self.empty_ok, self.ignore_case, self.ignore_space, self.na_ok, self.unique, self.skip_generation, self.skip_validation)
             except AttributeError:
                 self.error(
                     "{} is not a valid Checkcel Validator".format(validator['type'])

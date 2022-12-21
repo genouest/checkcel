@@ -42,7 +42,7 @@ class Checkerator(Checkplate):
             if isinstance(validator, OntologyValidator) or isinstance(validator, VocabulaireOuvertValidator):
                 if not ontology_sheet:
                     ontology_sheet = wb.create_sheet(title="Ontologies")
-                data_validation = validator.generate(get_column_letter(current_data_column), get_column_letter(current_ontology_column), ontology_sheet)
+                data_validation = validator.generate(get_column_letter(current_data_column), column_name, get_column_letter(current_ontology_column), ontology_sheet)
                 current_ontology_column += 1
             elif isinstance(validator, SetValidator):
                 # Total size, including separators must be < 256
@@ -52,18 +52,18 @@ class Checkerator(Checkplate):
                     data_validation = validator.generate(get_column_letter(current_data_column), column_name, get_column_letter(current_set_column), set_sheet)
                     current_set_column += 1
                 else:
-                    data_validation = validator.generate(get_column_letter(current_data_column))
+                    data_validation = validator.generate(get_column_letter(current_data_column), column_name)
                 set_columns[column_name] = get_column_letter(current_data_column)
             elif isinstance(validator, LinkedSetValidator):
                 if not set_sheet:
                     set_sheet = wb.create_sheet(title="Sets")
-                data_validation = validator.generate(get_column_letter(current_data_column), set_columns, column_name, get_column_letter(current_set_column), set_sheet, wb)
+                data_validation = validator.generate(get_column_letter(current_data_column), column_name, set_columns, get_column_letter(current_set_column), set_sheet, wb)
                 current_set_column += 1
                 set_columns[column_name] = get_column_letter(current_data_column)
             elif isinstance(validator, UniqueValidator):
-                data_validation = validator.generate(get_column_letter(current_data_column), column_dict)
+                data_validation = validator.generate(get_column_letter(current_data_column), column_name, column_dict)
             else:
-                data_validation = validator.generate(get_column_letter(current_data_column))
+                data_validation = validator.generate(get_column_letter(current_data_column), column_name)
             if data_validation:
                 data_sheet.add_data_validation(data_validation)
             current_data_column += 1
@@ -71,6 +71,9 @@ class Checkerator(Checkplate):
             for column_cells in sheet.columns:
                 length = (max(len(self.as_text(cell.value)) for cell in column_cells) + 2) * 1.2
                 sheet.column_dimensions[get_column_letter(column_cells[0].column)].width = length
+
+        if self.freeze_header:
+            data_sheet.freeze_panes = "A2"
         wb.save(filename=self.output)
 
     def as_text(self, value):
