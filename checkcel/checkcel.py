@@ -41,7 +41,7 @@ class Checkcel(Checkplate):
 
     def _log_debug_failures(self):
         for field_name, field_failure in self.failures.items():
-            self.debug('\n', 'Failure on field: "{}":'.format(field_name))
+            self.debug('\nFailure on field: "{}":'.format(field_name))
             for i, (row, errors) in enumerate(field_failure.items()):
                 self.debug("  {}:{}".format(self.source, row))
                 for error in errors:
@@ -88,7 +88,7 @@ class Checkcel(Checkplate):
         )
 
     def validate(self):
-        self.info("\n", "Validating {}{}".format(self.__class__.__name__, "(source={})".format(self.source) if self.source else ""))
+        self.info("\nValidating {}{}".format(self.__class__.__name__, "(source={})".format(self.source) if self.source else ""))
 
         if self.source:
             if self.format == "spreadsheet":
