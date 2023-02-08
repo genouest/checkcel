@@ -34,21 +34,21 @@ class Checkplate(object):
         for validator in self.validators.values():
             validator._set_attributes(self.empty_ok, self.ignore_case, self.ignore_space, self.na_ok, self.unique, self.skip_generation, self.skip_validation)
 
-    def debug(self, message):
+    def debug(self, message, prefix="", suffix=""):
         self.logger.debug(message)
-        self.logs.append("Debug: {}".format(message))
+        self.logs.append("Debug: {}{}{}".format(prefix, message, suffix))
 
-    def info(self, message):
+    def info(self, message, prefix="", suffix=""):
         self.logger.info(message)
-        self.logs.append("Info: {}".format(message))
+        self.logs.append("Info: {}{}{}".format(prefix, message, suffix))
 
-    def warn(self, message):
+    def warn(self, message, prefix="", suffix=""):
         self.logger.warn(message)
-        self.logs.append("Warning: {}".format(message))
+        self.logs.append("Warning: {}{}{}".format(prefix, message, suffix))
 
-    def error(self, message):
+    def error(self, message, prefix="", suffix=""):
         self.logger.error(message)
-        self.logs.append("Error: {}".format(message))
+        self.logs.append("Error: {}{}{}".format(prefix, message, suffix))
 
     def load_from_python_file(self, file_path):
         # Limit conflicts in file name
