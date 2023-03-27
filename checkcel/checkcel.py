@@ -88,21 +88,19 @@ class Checkcel(Checkplate):
         )
 
     def validate(self):
-        self.info(
-            "\nValidating {}{}".format(self.__class__.__name__, "(source={})".format(self.source) if self.source else "")
-        )
+        self.info("\nValidating {}{}".format(self.__class__.__name__, "(source={})".format(self.source) if self.source else ""))
 
         if self.source:
             if self.format == "spreadsheet":
                 with warnings.catch_warnings():
                     warnings.simplefilter("ignore")
-                    df = pandas.read_excel(self.source, sheet_name=self.sheet, keep_default_na=False, skiprows=self.row)
+                    df = pandas.read_excel(self.source, sheet_name=self.sheet, keep_default_na=False, skiprows=self.row, dtype=str)
             else:
                 df = pandas.read_csv(self.source, sep=self.delimiter, skiprows=self.row)
 
             if len(df) == 0:
                 self.info(
-                    "\033[1;33m" + "Source file has no data" + "\033[0m"
+                    "\033[1;33m", "Source file has no data", "\033[0m"
                 )
                 return False
 
@@ -115,7 +113,7 @@ class Checkcel(Checkplate):
         validator_set = set(self.validators)
         self.missing_validators = self.column_set - validator_set
         if self.missing_validators:
-            self.info("\033[1;33m" + "Missing..." + "\033[0m")
+            self.info("\033[1;33m", "Missing...", "\033[0m")
             self._log_missing_validators()
 
             if not self.ignore_missing_validators:
@@ -123,7 +121,7 @@ class Checkcel(Checkplate):
 
         self.missing_fields = validator_set - self.column_set
         if self.missing_fields:
-            self.info("\033[1;33m" + "Missing..." + "\033[0m")
+            self.info("\033[1;33m", "Missing...", "\033[0m")
             self._log_missing_fields()
             return False
 
@@ -136,12 +134,12 @@ class Checkcel(Checkplate):
         df.apply(lambda row: self._validate(row), axis=1)
 
         if self.failures:
-            self.info("\033[0;31m" + "Failed" + "\033[0m")
+            self.info("\033[0;31m", "Failed", "\033[0m")
             self._log_debug_failures()
             self._log_validator_failures()
             return False
         else:
-            self.info("\033[0;32m" + "Passed" + "\033[0m")
+            self.info("\033[0;32m", "Passed", "\033[0m")
             return True
 
     def _validate(self, row):

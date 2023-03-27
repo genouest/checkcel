@@ -34,20 +34,20 @@ class Checkplate(object):
         for validator in self.validators.values():
             validator._set_attributes(self.empty_ok, self.ignore_case, self.ignore_space, self.na_ok, self.unique, self.skip_generation, self.skip_validation)
 
-    def debug(self, message):
-        self.logger.debug(message)
+    def debug(self, message, prefix="", suffix=""):
+        self.logger.debug("{}{}{}".format(prefix, message, suffix))
         self.logs.append("Debug: {}".format(message))
 
-    def info(self, message):
-        self.logger.info(message)
+    def info(self, message, prefix="", suffix=""):
+        self.logger.info("{}{}{}".format(prefix, message, suffix))
         self.logs.append("Info: {}".format(message))
 
-    def warn(self, message):
-        self.logger.warn(message)
+    def warn(self, message, prefix="", suffix=""):
+        self.logger.warn("{}{}{}".format(prefix, message, suffix))
         self.logs.append("Warning: {}".format(message))
 
-    def error(self, message):
-        self.logger.error(message)
+    def error(self, message, prefix="", suffix=""):
+        self.logger.error("{}{}{}".format(prefix, message, suffix))
         self.logs.append("Error: {}".format(message))
 
     def load_from_python_file(self, file_path):
