@@ -359,16 +359,16 @@ class SetValidator(Validator):
         if self.na_ok and field.lower() in ['na', 'n/a']:
             return
 
-        if field not in self.valid_values:
+        if str(field) not in self.valid_values:
             self.invalid_dict["invalid_set"].add(field)
             self.invalid_dict["invalid_rows"].add(row_number)
             raise ValidationException(
                 "'{}' is invalid".format(field)
             )
         if field and self.unique:
-            if field in self.unique_values:
+            if str(field) in self.unique_values:
                 raise ValidationException("'{}' is already in the column".format(field))
-            self.unique_values.add(field)
+            self.unique_values.add(str(field))
 
     def _set_attributes(self, empty_ok_template, ignore_case_template, ignore_space_template, na_ok_template, unique_template, skip_generation_template, skip_validation_template):
         # Override with template value if it was not set (default to None)
