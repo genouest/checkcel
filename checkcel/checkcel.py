@@ -16,6 +16,7 @@ class Checkcel(Checkplate):
         delimiter=",",
         sheet=0,
         row=0,
+        ignore_missing_validators=False
         **kwargs
     ):
         super(Checkcel, self).__init__(**kwargs)
@@ -31,7 +32,7 @@ class Checkcel(Checkplate):
         # This value is used for display. Pandas skips the header row
         self.line_count = row + 1
         self.column_set = set()
-        self.ignore_missing_validators = False
+        self.ignore_missing_validators = ignore_missing_validators
 
         if not (self.source or self.data is not None):
             raise Exception("Need to provide either a source or the data (as a pandas dataframe)")
