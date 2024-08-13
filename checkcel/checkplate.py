@@ -82,6 +82,7 @@ class Checkplate(object):
         self.ignore_space = getattr(custom_class, 'ignore_space', False)
         self.expected_rows = getattr(custom_class, 'expected_rows', 0)
         self.freeze_header = getattr(custom_class, 'freeze_header', False)
+        self.ignore_missing_validators = getattr(custom_class, 'ignore_missing_validators', False)
         try:
             self.expected_rows = int(self.expected_rows)
         except ValueError:
@@ -154,6 +155,8 @@ class Checkplate(object):
         self.skip_generation = data.get('skip_generation', False)
         self.skip_validation = data.get('skip_validation', False)
         self.freeze_header = data.get('freeze_header', False)
+        self.ignore_missing_validators = data.get('ignore_missing_validators', False)
+
         try:
             self.expected_rows = int(self.expected_rows)
         except ValueError:

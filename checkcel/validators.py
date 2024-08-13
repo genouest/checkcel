@@ -188,6 +188,8 @@ class TextValidator(Validator):
 
         if field and self.unique:
             if field in self.unique_values:
+                self.invalid_dict["invalid_set"].add(field)
+                self.invalid_dict["invalid_rows"].add(row_number)
                 raise ValidationException("'{}' is already in the column".format(field))
             self.unique_values.add(field)
 
@@ -252,6 +254,8 @@ class CastValidator(Validator):
 
                 if field and self.unique:
                     if field in self.unique_values:
+                        self.invalid_dict["invalid_set"].add(field)
+                        self.invalid_dict["invalid_rows"].add(row_number)
                         raise ValidationException("'{}' is already in the column".format(field))
                     self.unique_values.add(field)
 
@@ -367,6 +371,8 @@ class SetValidator(Validator):
             )
         if field and self.unique:
             if str(field) in self.unique_values:
+                self.invalid_dict["invalid_set"].add(field)
+                self.invalid_dict["invalid_rows"].add(row_number)
                 raise ValidationException("'{}' is already in the column".format(field))
             self.unique_values.add(str(field))
 
@@ -467,6 +473,8 @@ class LinkedSetValidator(Validator):
 
         if field and self.unique:
             if field in self.unique_values:
+                self.invalid_dict["invalid_set"].add(field)
+                self.invalid_dict["invalid_rows"].add(row_number)
                 raise ValidationException("'{}' is already in the column".format(field))
             self.unique_values.add(field)
 
@@ -578,6 +586,8 @@ class DateValidator(Validator):
 
                 if field and self.unique:
                     if field in self.unique_values:
+                        self.invalid_dict["invalid_set"].add(field)
+                        self.invalid_dict["invalid_rows"].add(row_number)
                         raise ValidationException("'{}' is already in the column".format(field))
                     self.unique_values.add(field)
 
@@ -686,6 +696,8 @@ class TimeValidator(Validator):
 
                 if field and self.unique:
                     if field in self.unique_values:
+                        self.invalid_dict["invalid_set"].add(field)
+                        self.invalid_dict["invalid_rows"].add(row_number)
                         raise ValidationException("'{}' is already in the column".format(field))
                     self.unique_values.add(field)
 
@@ -764,6 +776,8 @@ class EmailValidator(Validator):
                 raise ValidationException(e)
             if self.unique:
                 if field in self.unique_values:
+                    self.invalid_dict["invalid_set"].add(field)
+                    self.invalid_dict["invalid_rows"].add(row_number)
                     raise ValidationException("'{}' is already in the column".format(field))
                 self.unique_values.add(field)
 
@@ -968,6 +982,8 @@ class UniqueValidator(Validator):
             if self._can_be_empty(row):
                 return
             else:
+                self.invalid_dict["invalid_set"].add(field)
+                self.invalid_dict["invalid_rows"].add(row_number)
                 raise ValidationException(
                     "Field cannot be empty"
                 )

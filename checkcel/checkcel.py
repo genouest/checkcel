@@ -114,10 +114,9 @@ class Checkcel(Checkplate):
         validator_set = set(self.validators)
         self.missing_validators = self.column_set - validator_set
         if self.missing_validators:
-            self.info("\033[1;33m", "Missing...", "\033[0m")
-            self._log_missing_validators()
-
             if not self.ignore_missing_validators:
+                self.info("\033[1;33m", "Missing...", "\033[0m")
+                self._log_missing_validators()
                 return False
 
         self.missing_fields = validator_set - self.column_set
