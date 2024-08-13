@@ -16,7 +16,7 @@ class Checkcel(Checkplate):
         delimiter=",",
         sheet=0,
         row=0,
-        ignore_missing_validators=False
+        ignore_missing_validators=False,
         **kwargs
     ):
         super(Checkcel, self).__init__(**kwargs)
