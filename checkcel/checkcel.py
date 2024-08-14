@@ -50,7 +50,7 @@ class Checkcel(Checkplate):
 
     def _log_validator_failures(self):
         for field_name, validator in self.validators.items():
-            if validator.bad:
+            if validator.bad['invalid_set'] or validator.bad['invalid_unique']:
                 self.error(
                     "  {} failed {} time(s) ({:.1%}) on field: '{}'".format(
                         validator.__class__.__name__,
@@ -59,17 +59,34 @@ class Checkcel(Checkplate):
                         field_name,
                     )
                 )
-                try:
-                    # If self.bad is iterable, it contains the fields which
-                    # caused it to fail
-                    data = validator.bad
-                    wrong_terms = ", ".join(["'{}'".format(val) for val in data["invalid_set"]])
-                    wrong_rows = ", ".join([str(val) for val in data["invalid_rows"]])
+                if validator.bad['invalid_set']:
+                    try:
+                        # If self.bad is iterable, it contains the fields which
+                        # caused it to fail
+                        data = validator.bad
+                        wrong_terms = ", ".join(["'{}'".format(val) for val in data["invalid_set"]])
+                        wrong_rows = ", ".join([str(val) for val in data["invalid_rows"]])
+                        self.error(
+                            "    Invalid fields: [{}] in rows: [{}]".format(wrong_terms, wrong_rows)
+                        )
+                    except TypeError as e:
+                        raise e
+
+                if validator.bad['invalid_unique']:
                     self.error(
-                        "    Invalid fields: [{}] in rows: [{}]".format(wrong_terms, wrong_rows)
+                        "   The following values failed unicity check: ".format(
+                        )
                     )
-                except TypeError as e:
-                    raise e
+                    try:
+                        # If self.bad is iterable, it contains the fields which
+                        # caused it to fail
+                        for key, values in validator.bad['invalid_unique']:
+                            wrong_rows = ", ".join([str(val) for val in values])
+                            self.error(
+                                "    Value: '{}' in rows: [{}]".format(key, wrong_rows)
+                            )
+                    except TypeError as e:
+                        raise e
 
     def _log_missing_validators(self):
         self.error("  Missing validators for:")
