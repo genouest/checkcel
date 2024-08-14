@@ -80,7 +80,7 @@ class Checkcel(Checkplate):
                     try:
                         # If self.bad is iterable, it contains the fields which
                         # caused it to fail
-                        for key, values in validator.bad['invalid_unique']:
+                        for key, values in validator.bad['invalid_unique'].items():
                             wrong_rows = ", ".join([str(val) for val in values])
                             self.error(
                                 "    Value: '{}' in rows: [{}]".format(key, wrong_rows)
