@@ -187,6 +187,8 @@ class TextValidator(Validator):
             return
 
         if not field and not self._can_be_empty(row):
+            self.invalid_dict["invalid_set"].add(field)
+            self.invalid_dict["invalid_rows"].add(row_number)
             raise ValidationException(
                 "Field cannot be empty"
             )
